@@ -1,0 +1,13 @@
+server:
+  port: 8080
+
+database:
+  path: data/kafka-map.db
+
+default:
+  username: admin
+  password: admin
+
+cache:
+  token_expiration: 7200  # 2 hours in seconds
+  max_tokens: 100
