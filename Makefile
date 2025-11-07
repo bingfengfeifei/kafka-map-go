@@ -7,11 +7,17 @@ VERSION ?= 1.0.0
 build: build-frontend
 	@echo "Building Kafka-Map Go for Linux AMD64..."
 	CGO_ENABLED=0 go build -ldflags="-s -w"  -trimpath  -o kafka-map-go ./cmd/server
+	@echo "Compressing binary with UPX..."
+	chmod +x upx/x86/upx
+	./upx/x86/upx --best --lzma kafka-map-go
 
 # Build optimized binary for Linux ARM64
 build-arm: build-frontend
 	@echo "Building Kafka-Map Go for Linux ARM64..."
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o kafka-map-go-arm64 ./cmd/server
+	@echo "Compressing binary with UPX..."
+	chmod +x upx/arm/upx
+	./upx/arm/upx --best --lzma kafka-map-go-arm64
 
 # Clean build artifacts
 clean:
