@@ -14,6 +14,17 @@ type ClusterController struct {
 	clusterService *service.ClusterService
 }
 
+type updateClusterRequest struct {
+	Name             *string `json:"name"`
+	Servers          *string `json:"servers"`
+	SecurityProtocol *string `json:"securityProtocol"`
+	SaslMechanism    *string `json:"saslMechanism"`
+	SaslUsername     *string `json:"saslUsername"`
+	SaslPassword     *string `json:"saslPassword"`
+	AuthUsername     *string `json:"authUsername"`
+	AuthPassword     *string `json:"authPassword"`
+}
+
 func NewClusterController(clusterService *service.ClusterService) *ClusterController {
 	return &ClusterController{clusterService: clusterService}
 }
@@ -135,8 +146,8 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 		return
 	}
 
-	var cluster model.Cluster
-	if err := ctx.ShouldBindJSON(&cluster); err != nil {
+	var req updateClusterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid request: " + err.Error(),
@@ -144,8 +155,51 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 		return
 	}
 
-	cluster.ID = uint(id)
-	if err := c.clusterService.Update(&cluster); err != nil {
+	if req.Name == nil && req.Servers == nil && req.SecurityProtocol == nil &&
+		req.SaslMechanism == nil && req.SaslUsername == nil && req.SaslPassword == nil &&
+		req.AuthUsername == nil && req.AuthPassword == nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "No fields to update",
+		})
+		return
+	}
+
+	cluster, err := c.clusterService.GetByID(uint(id))
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, dto.Response{
+			Code:    http.StatusNotFound,
+			Message: "Cluster not found: " + err.Error(),
+		})
+		return
+	}
+
+	if req.Name != nil {
+		cluster.Name = *req.Name
+	}
+	if req.Servers != nil {
+		cluster.Servers = *req.Servers
+	}
+	if req.SecurityProtocol != nil {
+		cluster.SecurityProtocol = *req.SecurityProtocol
+	}
+	if req.SaslMechanism != nil {
+		cluster.SaslMechanism = *req.SaslMechanism
+	}
+	if req.SaslUsername != nil {
+		cluster.SaslUsername = *req.SaslUsername
+	}
+	if req.SaslPassword != nil {
+		cluster.SaslPassword = *req.SaslPassword
+	}
+	if req.AuthUsername != nil {
+		cluster.SaslUsername = *req.AuthUsername
+	}
+	if req.AuthPassword != nil {
+		cluster.SaslPassword = *req.AuthPassword
+	}
+
+	if err := c.clusterService.Update(cluster); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
 			Message: "Failed to update cluster: " + err.Error(),

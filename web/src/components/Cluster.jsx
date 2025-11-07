@@ -312,12 +312,16 @@ class Cluster extends Component {
             }
         }, {
             title: <FormattedMessage id="created"/>,
-            dataIndex: 'created',
-            key: 'created',
+            dataIndex: 'createdAt',
+            key: 'createdAt',
             render: (text, record) => {
+                const created = record.createdAt || record.created;
+                if (!created) {
+                    return '-';
+                }
                 return (
-                    <Tooltip title={text}>
-                        {dayjs(text).fromNow()}
+                    <Tooltip title={created}>
+                        {dayjs(created).fromNow()}
                     </Tooltip>
                 )
             },

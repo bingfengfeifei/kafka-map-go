@@ -1,18 +1,22 @@
 package dto
 
+import "time"
+
 // ClusterInfo represents cluster information with statistics
 type ClusterInfo struct {
-	ID               uint   `json:"id"`
-	Name             string `json:"name"`
-	Servers          string `json:"servers"`
-	SecurityProtocol string `json:"securityProtocol"`
-	SaslMechanism    string `json:"saslMechanism"`
-	SaslUsername     string `json:"saslUsername"`
-	BrokerCount      int    `json:"brokerCount"`
-	TopicCount       int    `json:"topicCount"`
-	ConsumerCount    int    `json:"consumerCount"`
-	PartitionCount   int    `json:"partitionCount"`
-	ReplicaCount     int    `json:"replicaCount"`
+	ID               uint      `json:"id"`
+	Name             string    `json:"name"`
+	Servers          string    `json:"servers"`
+	SecurityProtocol string    `json:"securityProtocol"`
+	SaslMechanism    string    `json:"saslMechanism"`
+	SaslUsername     string    `json:"saslUsername"`
+	CreatedAt        time.Time `json:"createdAt"`
+	UpdatedAt        time.Time `json:"updatedAt"`
+	BrokerCount      int       `json:"brokerCount"`
+	TopicCount       int       `json:"topicCount"`
+	ConsumerCount    int       `json:"consumerCount"`
+	PartitionCount   int       `json:"partitionCount"`
+	ReplicaCount     int       `json:"replicaCount"`
 }
 
 // BrokerInfo is a lightweight broker descriptor used in various places.

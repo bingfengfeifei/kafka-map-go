@@ -93,80 +93,42 @@ func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 		return nil, err
 	}
 
+	info := &dto.ClusterInfo{
+		ID:               cluster.ID,
+		Name:             cluster.Name,
+		Servers:          cluster.Servers,
+		SecurityProtocol: cluster.SecurityProtocol,
+		SaslMechanism:    cluster.SaslMechanism,
+		SaslUsername:     cluster.SaslUsername,
+		CreatedAt:        cluster.CreatedAt,
+		UpdatedAt:        cluster.UpdatedAt,
+	}
+
 	admin, err := s.kafkaManager.GetAdminClient(cluster)
 	if err != nil {
-		// Return basic cluster info without Kafka statistics
-		return &dto.ClusterInfo{
-			ID:               cluster.ID,
-			Name:             cluster.Name,
-			Servers:          cluster.Servers,
-			SecurityProtocol: cluster.SecurityProtocol,
-			SaslMechanism:    cluster.SaslMechanism,
-			SaslUsername:     cluster.SaslUsername,
-			BrokerCount:      0,
-			TopicCount:       0,
-			ConsumerCount:    0,
-			PartitionCount:   0,
-			ReplicaCount:     0,
-		}, nil
+		return info, nil
 	}
 
 	// Get brokers
 	brokers, _, err := admin.DescribeCluster()
 	if err != nil {
-		// Return basic cluster info without Kafka statistics
-		return &dto.ClusterInfo{
-			ID:               cluster.ID,
-			Name:             cluster.Name,
-			Servers:          cluster.Servers,
-			SecurityProtocol: cluster.SecurityProtocol,
-			SaslMechanism:    cluster.SaslMechanism,
-			SaslUsername:     cluster.SaslUsername,
-			BrokerCount:      0,
-			TopicCount:       0,
-			ConsumerCount:    0,
-			PartitionCount:   0,
-			ReplicaCount:     0,
-		}, nil
+		return info, nil
 	}
+	info.BrokerCount = len(brokers)
 
 	// Get topics
 	topics, err := admin.ListTopics()
 	if err != nil {
-		// Return basic cluster info without Kafka statistics
-		return &dto.ClusterInfo{
-			ID:               cluster.ID,
-			Name:             cluster.Name,
-			Servers:          cluster.Servers,
-			SecurityProtocol: cluster.SecurityProtocol,
-			SaslMechanism:    cluster.SaslMechanism,
-			SaslUsername:     cluster.SaslUsername,
-			BrokerCount:      len(brokers),
-			TopicCount:       0,
-			ConsumerCount:    0,
-			PartitionCount:   0,
-			ReplicaCount:     0,
-		}, nil
+		return info, nil
 	}
+	info.TopicCount = len(topics)
 
 	// Get consumer groups
 	groups, err := admin.ListConsumerGroups()
 	if err != nil {
-		// Return basic cluster info without consumer group statistics
-		return &dto.ClusterInfo{
-			ID:               cluster.ID,
-			Name:             cluster.Name,
-			Servers:          cluster.Servers,
-			SecurityProtocol: cluster.SecurityProtocol,
-			SaslMechanism:    cluster.SaslMechanism,
-			SaslUsername:     cluster.SaslUsername,
-			BrokerCount:      len(brokers),
-			TopicCount:       len(topics),
-			ConsumerCount:    0,
-			PartitionCount:   0,
-			ReplicaCount:     0,
-		}, nil
+		return info, nil
 	}
+	info.ConsumerCount = len(groups)
 
 	// Calculate statistics
 	partitionCount := 0
@@ -178,19 +140,8 @@ func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 		}
 	}
 
-	info := &dto.ClusterInfo{
-		ID:               cluster.ID,
-		Name:             cluster.Name,
-		Servers:          cluster.Servers,
-		SecurityProtocol: cluster.SecurityProtocol,
-		SaslMechanism:    cluster.SaslMechanism,
-		SaslUsername:     cluster.SaslUsername,
-		BrokerCount:      len(brokers),
-		TopicCount:       len(topics),
-		ConsumerCount:    len(groups),
-		PartitionCount:   partitionCount,
-		ReplicaCount:     replicaCount,
-	}
+	info.PartitionCount = partitionCount
+	info.ReplicaCount = replicaCount
 
 	return info, nil
 }
