@@ -59,13 +59,15 @@ class ConsumerGroupInfo extends Component {
         let paramsStr = qs.stringify(queryParams);
         let items = [];
         try {
-            items = await request.get(`/consumerGroups/${queryParams['groupId']}/describe?` + paramsStr);
+            const response = await request.get(`/consumerGroups/${queryParams['groupId']}/describe?` + paramsStr);
+            items = response && Array.isArray(response.data) ? response.data : [];
         } catch (e) {
             console.log(e);
         } finally {
-            items = items.map(item => {
-                return {'key': item['id'], ...item}
-            })
+            items = items.map(item => ({
+                ...item,
+                key: `${item['topic'] || 'unknown'}-${item['partition'] || 0}-${item['consumerId'] || ''}`
+            }));
             this.setState({
                 items: items,
                 queryParams: queryParams,
@@ -96,17 +98,20 @@ class ConsumerGroupInfo extends Component {
                 title: 'END-OFFSET',
                 dataIndex: 'logEndOffset',
                 key: 'logEndOffset',
-                sorter: (a, b) => a['logEndOffset'] - b['logEndOffset'],
+                sorter: (a, b) => (a['logEndOffset'] || 0) - (b['logEndOffset'] || 0),
+                render: (value) => value === null || value === undefined ? '-' : value
             }, {
                 title: 'CURRENT-OFFSET',
                 dataIndex: 'currentOffset',
                 key: 'currentOffset',
-                sorter: (a, b) => a['currentOffset'] - b['currentOffset'],
+                sorter: (a, b) => (a['currentOffset'] || 0) - (b['currentOffset'] || 0),
+                render: (value) => value === null || value === undefined ? '-' : value
             }, {
                 title: 'Lag',
                 dataIndex: 'lag',
                 key: 'lag',
-                sorter: (a, b) => a['lag'] - b['lag'],
+                sorter: (a, b) => (a['lag'] || 0) - (b['lag'] || 0),
+                render: (value) => value === null || value === undefined ? '-' : value
             }, {
                 title: 'CONSUMER-ID',
                 dataIndex: 'consumerId',
@@ -168,7 +173,7 @@ class ConsumerGroupInfo extends Component {
                     </div>
 
                     <Table
-                        rowKey='id'
+                        rowKey='key'
                         dataSource={this.state.items}
                         columns={columns}
                         position={'both'}

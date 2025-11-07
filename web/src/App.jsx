@@ -60,7 +60,8 @@ class App extends Component {
     }
 
     loadUserInfo = async () => {
-        let info = await request.get('/info');
+        let response = await request.get('/info');
+        let info = response && response.data ? response.data : {};
         this.setState({
             info: info
         })

@@ -36,6 +36,41 @@ func (c *ClusterController) GetClusters(ctx *gin.Context) {
 	})
 }
 
+// GetClustersPaged retrieves clusters with pagination
+func (c *ClusterController) GetClustersPaged(ctx *gin.Context) {
+	pageIndex, err := strconv.Atoi(ctx.DefaultQuery("pageIndex", "1"))
+	if err != nil || pageIndex < 1 {
+		pageIndex = 1
+	}
+
+	pageSize, err := strconv.Atoi(ctx.DefaultQuery("pageSize", "10"))
+	if err != nil || pageSize < 1 {
+		pageSize = 10
+	}
+
+	name := ctx.Query("name")
+
+	clusters, total, err := c.clusterService.GetAllPaged(pageIndex, pageSize, name)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve clusters: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data: map[string]interface{}{
+			"items":     clusters,
+			"total":     total,
+			"pageIndex": pageIndex,
+			"pageSize":  pageSize,
+		},
+	})
+}
+
 // GetCluster retrieves a cluster by ID
 func (c *ClusterController) GetCluster(ctx *gin.Context) {
 	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)

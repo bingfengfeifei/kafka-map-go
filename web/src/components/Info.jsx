@@ -52,8 +52,11 @@ class Info extends Component {
 
     changePassword = async (values) => {
         await request.post('/change-password', values);
-        message.success('密码修改成功，即将跳转至登录页面');
-        window.location.reload();
+        message.success('密码修改成功，即将跳转至登录页面', 2);
+        setTimeout(() => {
+            window.location.href = '#/login';
+            window.location.reload();
+        }, 1500);
     }
 
     render() {

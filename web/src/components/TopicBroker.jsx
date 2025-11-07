@@ -25,7 +25,8 @@ class TopicBroker extends Component {
         this.setState({
             loading: true
         })
-        let items = await request.get(`/topics/${topic}/brokers?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}/brokers?clusterId=${clusterId}`);
+        let items = response && Array.isArray(response.data) ? response.data : [];
         this.setState({
             items: items,
             loading: false
@@ -58,8 +59,9 @@ class TopicBroker extends Component {
             dataIndex: 'leaderPartitions',
             key: 'leaderPartitions',
             render: (leaderPartitions, record, index) => {
-                return <Tooltip title={leaderPartitions.join('、')}>
-                    <Button type="link" size='small'>{leaderPartitions.length}</Button>
+                const partitions = Array.isArray(leaderPartitions) ? leaderPartitions : [];
+                return <Tooltip title={partitions.join('、')}>
+                    <Button type="link" size='small'>{partitions.length}</Button>
                 </Tooltip>;
             }
         }, {
@@ -67,8 +69,9 @@ class TopicBroker extends Component {
             dataIndex: 'followerPartitions',
             key: 'followerPartitions',
             render: (followerPartitions, record, index) => {
-                return <Tooltip title={followerPartitions.join('、')}>
-                    <Button type="link" size='small'>{followerPartitions.length}</Button>
+                const partitions = Array.isArray(followerPartitions) ? followerPartitions : [];
+                return <Tooltip title={partitions.join('、')}>
+                    <Button type="link" size='small'>{partitions.length}</Button>
                 </Tooltip>;
             }
         }];

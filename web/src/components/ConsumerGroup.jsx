@@ -68,10 +68,16 @@ class ConsumerGroup extends Component {
         let paramsStr = qs.stringify(queryParams);
         let items = [];
         try {
-            items = await request.get('/consumerGroups?' + paramsStr);
+            const response = await request.get('/consumerGroups?' + paramsStr);
+            items = response && Array.isArray(response.data) ? response.data : [];
         } catch (e) {
             console.log(e);
         } finally {
+            items = items.map(item => ({
+                ...item,
+                topics: Array.isArray(item['topics']) ? item['topics'] : [],
+                deleting: false
+            }));
             this.setState({
                 items: items,
                 queryParams: queryParams,

@@ -57,7 +57,8 @@ class TopicInfo extends Component {
     }
 
     loadTopicInfo = async (clusterId, topic) => {
-        let result = await request.get(`/topics/${topic}?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}?clusterId=${clusterId}`);
+        let result = response && response.data ? response.data : { partitions: [] };
         this.setState({
             topicInfo: result
         })
@@ -68,7 +69,8 @@ class TopicInfo extends Component {
             modalConfirmLoading: true
         })
         try {
-            let offset = await request.post(`/topics/${this.state.topic}/data?clusterId=${this.state.clusterId}`, values);
+            let response = await request.post(`/topics/${this.state.topic}/data?clusterId=${this.state.clusterId}`, values);
+            let offset = response && response.data !== undefined ? response.data : null;
             notification['success']({
                 message: '提示',
                 description: `发送数据成功，位于 offset ${offset}。`,
@@ -94,6 +96,10 @@ class TopicInfo extends Component {
     }
 
     render() {
+        const topicInfo = this.state.topicInfo || {partitions: []};
+        const replicaCount = typeof topicInfo['replicaCount'] === 'number' ? topicInfo['replicaCount'] : 0;
+        const totalLogSize = typeof topicInfo['totalLogSize'] === 'number' ? topicInfo['totalLogSize'] : -1;
+
 
         return (
             <div>
@@ -128,11 +134,11 @@ class TopicInfo extends Component {
                         <Row>
                             <Space size='large'>
                                 <Statistic title={<FormattedMessage id="numPartitions"/>}
-                                           value={this.state.topicInfo['partitions'].length}/>
+                                           value={topicInfo['partitions'] ? topicInfo['partitions'].length : 0}/>
                                 <Statistic title={<FormattedMessage id="replicationFactor"/>}
-                                           value={this.state.topicInfo['replicaCount']}/>
+                                           value={replicaCount}/>
                                 <Statistic title={<FormattedMessage id="log-size"/>}
-                                           value={renderSize(this.state.topicInfo['totalLogSize'])}/>
+                                           value={totalLogSize < 0 ? '不支持' : renderSize(totalLogSize)}/>
                             </Space>
                         </Row>
                     </PageHeader>

@@ -28,7 +28,8 @@ class TopicPartition extends Component {
         this.setState({
             loading: true
         })
-        let items = await request.get(`/topics/${topic}/partitions?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}/partitions?clusterId=${clusterId}`);
+        let items = response && Array.isArray(response.data) ? response.data : [];
         this.setState({
             items: items,
             loading: false
@@ -53,9 +54,13 @@ class TopicPartition extends Component {
             key: 'leader',
             defaultSortOrder: 'ascend',
             render: (leader, record, index) => {
-
-                return <Tooltip key={'leader-' + leader['host']} title={leader['host'] + ":" + leader['port']}>
-                    <Button key={leader['host']} size='small'>{leader['id']}</Button>
+                if (!leader) {
+                    return '-';
+                }
+                const host = leader['host'] || '';
+                const port = leader['port'] || '';
+                return <Tooltip key={'leader-' + host} title={`${host}:${port}`}>
+                    <Button key={host} size='small'>{leader['id']}</Button>
                 </Tooltip>
             }
         }, {
@@ -69,17 +74,20 @@ class TopicPartition extends Component {
             key: 'endOffset',
             sorter: (a, b) => a['endOffset'] - b['endOffset'],
         }, {
-            title: 'Log Size',
-            dataIndex: 'y',
-            key: 'y',
-            sorter: (a, b) => a['replicas'].map(item => item['logSize']).reduce((a, b) => a + b, 0) - b['replicas'].map(item => item['logSize']).reduce((a, b) => a + b, 0),
-            render: (y, record) => {
-                let totalLogSize = record['replicas'].map(item => item['logSize']).reduce((a, b) => a + b, 0);
-                if (totalLogSize < 0) {
-                    return '不支持';
+                title: 'Log Size',
+                dataIndex: 'y',
+                key: 'y',
+                sorter: (a, b) => {
+                    const sum = (arr) => arr.reduce((acc, item) => acc + (item['logSize'] > 0 ? item['logSize'] : 0), 0);
+                    return sum(a['replicas'] || []) - sum(b['replicas'] || []);
+                },
+                render: (y, record) => {
+                    let totalLogSize = (record['replicas'] || []).reduce((acc, item) => acc + (item['logSize'] > 0 ? item['logSize'] : 0), 0);
+                    if (totalLogSize < 0) {
+                        return '不支持';
+                    }
+                    return renderSize(totalLogSize)
                 }
-                return renderSize(totalLogSize)
-            }
         }, {
             title: 'Replicas',
             dataIndex: 'replicas',
@@ -91,8 +99,10 @@ class TopicPartition extends Component {
                         if (item['logSize'] > 0) {
                             logSize = renderSize(item['logSize']);
                         }
-                        return <Tooltip key={'replicas-' + item['host']}
-                                        title={item['host'] + ":" + item['port'] + ' ' + logSize}>
+                        const host = item['host'] || '';
+                        const port = item['port'] || '';
+                        return <Tooltip key={'replicas-' + host}
+                                        title={`${host}:${port} ${logSize}`}>
                             <Button size='small'>{item['id']}</Button>
                         </Tooltip>
                     })}
@@ -105,8 +115,10 @@ class TopicPartition extends Component {
             render: (isr, record, index) => {
                 return <Space>
                     {isr.map(item => {
-                        return <Tooltip key={'isr-' + item['host']}
-                                        title={item['host'] + ":" + item['port']}>
+                        const host = item['host'] || '';
+                        const port = item['port'] || '';
+                        return <Tooltip key={'isr-' + host}
+                                        title={`${host}:${port}`}>
                             <Button size='small'>{item['id']}</Button>
                         </Tooltip>
                     })}

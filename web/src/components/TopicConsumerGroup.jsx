@@ -30,7 +30,8 @@ class TopicConsumerGroup extends Component {
         this.setState({
             loading: true
         })
-        let items = await request.get(`/topics/${topic}/consumerGroups?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}/consumerGroups?clusterId=${clusterId}`);
+        let items = response && Array.isArray(response.data) ? response.data : [];
         this.setState({
             items: items,
             loading: false
@@ -62,6 +63,9 @@ class TopicConsumerGroup extends Component {
             dataIndex: 'lag',
             key: 'lag',
             render: (lag) => {
+                if (lag === null || lag === undefined) {
+                    return '-';
+                }
                 return lag;
             }
         }];
@@ -69,7 +73,7 @@ class TopicConsumerGroup extends Component {
         return (
             <div>
                 <Table
-                    rowKey='id'
+                    rowKey='groupId'
                     dataSource={this.state.items}
                     columns={columns}
                     position={'both'}

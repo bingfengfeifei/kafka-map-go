@@ -102,6 +102,35 @@ func (c *ConsumerGroupController) GetConsumerGroupDetail(ctx *gin.Context) {
 	})
 }
 
+// DescribeConsumerGroup returns partition level assignment information for a consumer group.
+func (c *ConsumerGroupController) DescribeConsumerGroup(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	groupID := ctx.Param("groupId")
+
+	describe, err := c.consumerGroupService.DescribeConsumerGroup(uint(clusterID), groupID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to describe consumer group: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    describe,
+	})
+}
+
 // DeleteConsumerGroup deletes a consumer group
 func (c *ConsumerGroupController) DeleteConsumerGroup(ctx *gin.Context) {
 	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)

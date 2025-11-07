@@ -28,7 +28,9 @@ func (c *TopicController) GetTopics(ctx *gin.Context) {
 		return
 	}
 
-	topics, err := c.topicService.GetTopics(uint(clusterID))
+	name := ctx.Query("name")
+
+	topics, err := c.topicService.GetTopics(uint(clusterID), name)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,
@@ -55,7 +57,9 @@ func (c *TopicController) GetTopicNames(ctx *gin.Context) {
 		return
 	}
 
-	names, err := c.topicService.GetTopicNames(uint(clusterID))
+	name := ctx.Query("name")
+
+	names, err := c.topicService.GetTopicNames(uint(clusterID), name)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,
@@ -96,6 +100,90 @@ func (c *TopicController) GetTopicDetail(ctx *gin.Context) {
 		Code:    http.StatusOK,
 		Message: "Success",
 		Data:    detail,
+	})
+}
+
+// GetTopicPartitions returns partition level detail for a topic.
+func (c *TopicController) GetTopicPartitions(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	topicName := ctx.Param("topic")
+	partitions, err := c.topicService.GetTopicPartitions(uint(clusterID), topicName)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve topic partitions: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    partitions,
+	})
+}
+
+// GetTopicBrokers returns broker level statistics for a topic.
+func (c *TopicController) GetTopicBrokers(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	topicName := ctx.Param("topic")
+	brokers, err := c.topicService.GetTopicBrokers(uint(clusterID), topicName)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve topic brokers: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    brokers,
+	})
+}
+
+// GetTopicConsumerGroups returns consumer groups lag information for a topic.
+func (c *TopicController) GetTopicConsumerGroups(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	topicName := ctx.Param("topic")
+	groups, err := c.topicService.GetTopicConsumerGroups(uint(clusterID), topicName)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve topic consumer groups: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    groups,
 	})
 }
 
@@ -202,6 +290,34 @@ func (c *TopicController) ExpandPartitions(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, dto.Response{
 		Code:    http.StatusOK,
 		Message: "Partitions expanded successfully",
+	})
+}
+
+// GetTopicConfigs returns topic configuration entries.
+func (c *TopicController) GetTopicConfigs(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	topicName := ctx.Param("topic")
+	configs, err := c.topicService.GetTopicConfigs(uint(clusterID), topicName)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Failed to retrieve topic configs: " + err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, dto.Response{
+		Code:    http.StatusOK,
+		Message: "Success",
+		Data:    configs,
 	})
 }
 

@@ -33,7 +33,8 @@ class Broker extends Component {
         this.setState({
             loading: true
         })
-        let items = await request.get(`/brokers?clusterId=${clusterId}`);
+        let response = await request.get(`/brokers?clusterId=${clusterId}`);
+        let items = response && response.data ? response.data : [];
         this.setState({
             items: items,
             loading: false

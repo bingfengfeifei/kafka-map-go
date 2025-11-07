@@ -1,11 +1,17 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"net"
+	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/IBM/sarama"
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
+	"github.com/bingfengfeifei/kafka-map-go/internal/model"
 	"github.com/bingfengfeifei/kafka-map-go/internal/repository"
 	"github.com/bingfengfeifei/kafka-map-go/internal/util"
 )
@@ -22,45 +28,93 @@ func NewTopicService(clusterRepo *repository.ClusterRepository, kafkaManager *ut
 	}
 }
 
-// GetTopics retrieves all topics for a cluster
-func (s *TopicService) GetTopics(clusterID uint) ([]dto.TopicInfo, error) {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+// GetTopics retrieves all topics for a cluster with optional fuzzy filtering by name.
+func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummary, error) {
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	topics, err := admin.ListTopics()
+	topicsDetail, err := admin.ListTopics()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list topics: %w", err)
 	}
 
-	var topicInfos []dto.TopicInfo
-	for name, detail := range topics {
-		topicInfos = append(topicInfos, dto.TopicInfo{
-			Name:            name,
-			Partitions:      int(detail.NumPartitions),
-			Replicas:        int(detail.ReplicationFactor),
-			ISR:             int(detail.ReplicationFactor), // Simplified - actual ISR would need metadata
-			UnderReplicated: false,                         // Simplified - would need partition metadata
+	filter := strings.TrimSpace(name)
+	filterLower := strings.ToLower(filter)
+
+	var topicNames []string
+	for topicName := range topicsDetail {
+		if filter != "" && !strings.Contains(strings.ToLower(topicName), filterLower) {
+			continue
+		}
+		topicNames = append(topicNames, topicName)
+	}
+
+	if len(topicNames) == 0 {
+		return []dto.TopicSummary{}, nil
+	}
+
+	sort.Strings(topicNames)
+
+	metadata, err := admin.DescribeTopics(topicNames)
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe topics: %w", err)
+	}
+
+	brokers, _, err := admin.DescribeCluster()
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe cluster: %w", err)
+	}
+
+	brokerIDs := make([]int32, 0, len(brokers))
+	for _, b := range brokers {
+		brokerIDs = append(brokerIDs, b.ID())
+	}
+
+	topicSet := make(map[string]struct{}, len(topicNames))
+	for _, n := range topicNames {
+		topicSet[n] = struct{}{}
+	}
+
+	totalLogSize, _, err := describeLogDirs(admin, brokerIDs, topicSet)
+	if err != nil {
+		// fall back to -1 if unable to fetch
+		totalLogSize = make(map[string]int64)
+	}
+
+	clusterIDStr := strconv.FormatUint(uint64(clusterID), 10)
+
+	summaries := make([]dto.TopicSummary, 0, len(metadata))
+	for _, md := range metadata {
+		if md == nil || md.Err != sarama.ErrNoError {
+			continue
+		}
+		replicaCount := 0
+		if len(md.Partitions) > 0 && len(md.Partitions[0].Replicas) > 0 {
+			replicaCount = len(md.Partitions[0].Replicas)
+		}
+		size := int64(-1)
+		if v, ok := totalLogSize[md.Name]; ok {
+			size = v
+		}
+
+		summaries = append(summaries, dto.TopicSummary{
+			ClusterID:        clusterIDStr,
+			Name:             md.Name,
+			PartitionsCount:  len(md.Partitions),
+			ReplicaCount:     replicaCount,
+			TotalLogSize:     size,
+			ConsumerGroupCnt: 0, // can be enriched later; UI currently does not use this field
 		})
 	}
 
-	return topicInfos, nil
+	return summaries, nil
 }
 
-// GetTopicNames retrieves all topic names
-func (s *TopicService) GetTopicNames(clusterID uint) ([]string, error) {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
-	if err != nil {
-		return nil, err
-	}
-
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
+// GetTopicNames retrieves topic names (optionally filtered).
+func (s *TopicService) GetTopicNames(clusterID uint, name string) ([]string, error) {
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -70,62 +124,386 @@ func (s *TopicService) GetTopicNames(clusterID uint) ([]string, error) {
 		return nil, fmt.Errorf("failed to list topics: %w", err)
 	}
 
-	var names []string
-	for name := range topics {
-		names = append(names, name)
-	}
+	filter := strings.TrimSpace(name)
+	filterLower := strings.ToLower(filter)
 
+	var names []string
+	for topicName := range topics {
+		if filter != "" && !strings.Contains(strings.ToLower(topicName), filterLower) {
+			continue
+		}
+		names = append(names, topicName)
+	}
+	sort.Strings(names)
 	return names, nil
 }
 
-// GetTopicDetail retrieves detailed topic information
+// CountTopics returns the number of topics in a cluster.
+func (s *TopicService) CountTopics(clusterID uint) (int, error) {
+	_, admin, err := s.getClusterAndAdmin(clusterID)
+	if err != nil {
+		return 0, err
+	}
+
+	topics, err := admin.ListTopics()
+	if err != nil {
+		return 0, fmt.Errorf("failed to list topics: %w", err)
+	}
+	return len(topics), nil
+}
+
+// GetTopicDetail retrieves topic metadata with partition offsets.
 func (s *TopicService) GetTopicDetail(clusterID uint, topicName string) (*dto.TopicDetail, error) {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+	cluster, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get topic metadata
 	metadata, err := admin.DescribeTopics([]string{topicName})
 	if err != nil {
 		return nil, fmt.Errorf("failed to describe topic: %w", err)
 	}
 
-	if len(metadata) == 0 {
+	if len(metadata) == 0 || metadata[0] == nil || metadata[0].Err != sarama.ErrNoError {
 		return nil, fmt.Errorf("topic not found: %s", topicName)
 	}
-
 	topicMetadata := metadata[0]
 
-	// Get partition offsets
 	client, err := s.kafkaManager.CreateClient(cluster)
 	if err != nil {
 		return nil, err
 	}
 	defer client.Close()
 
-	var partitions []dto.PartitionInfo
+	partitions := make([]dto.TopicPartitionSummary, 0, len(topicMetadata.Partitions))
 	for _, partition := range topicMetadata.Partitions {
-		offset, err := client.GetOffset(topicName, partition.ID, sarama.OffsetNewest)
+		if partition == nil {
+			continue
+		}
+		beginning, err := client.GetOffset(topicName, partition.ID, sarama.OffsetOldest)
 		if err != nil {
-			offset = -1
+			beginning = -1
+		}
+		end, err := client.GetOffset(topicName, partition.ID, sarama.OffsetNewest)
+		if err != nil {
+			end = -1
+		}
+		partitions = append(partitions, dto.TopicPartitionSummary{
+			Partition:       partition.ID,
+			BeginningOffset: beginning,
+			EndOffset:       end,
+		})
+	}
+	sort.Slice(partitions, func(i, j int) bool {
+		return partitions[i].Partition < partitions[j].Partition
+	})
+
+	brokers, _, err := admin.DescribeCluster()
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe cluster: %w", err)
+	}
+
+	brokerIDs := make([]int32, 0, len(brokers))
+	for _, b := range brokers {
+		brokerIDs = append(brokerIDs, b.ID())
+	}
+
+	topicSet := map[string]struct{}{topicName: {}}
+	totalLogSize, _, err := describeLogDirs(admin, brokerIDs, topicSet)
+	var size int64 = -1
+	if err == nil {
+		if v, ok := totalLogSize[topicName]; ok {
+			size = v
+		}
+	}
+
+	replicaCount := 0
+	if len(topicMetadata.Partitions) > 0 && len(topicMetadata.Partitions[0].Replicas) > 0 {
+		replicaCount = len(topicMetadata.Partitions[0].Replicas)
+	}
+
+	return &dto.TopicDetail{
+		ClusterID:    strconv.FormatUint(uint64(clusterID), 10),
+		Name:         topicName,
+		ReplicaCount: replicaCount,
+		TotalLogSize: size,
+		Partitions:   partitions,
+	}, nil
+}
+
+// GetTopicPartitions returns detailed partition information for a topic.
+func (s *TopicService) GetTopicPartitions(clusterID uint, topicName string) ([]dto.TopicPartitionDetail, error) {
+	cluster, admin, err := s.getClusterAndAdmin(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := admin.DescribeTopics([]string{topicName})
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe topic: %w", err)
+	}
+	if len(metadata) == 0 || metadata[0] == nil || metadata[0].Err != sarama.ErrNoError {
+		return nil, fmt.Errorf("topic not found: %s", topicName)
+	}
+	topicMetadata := metadata[0]
+
+	brokers, _, err := admin.DescribeCluster()
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe cluster: %w", err)
+	}
+
+	brokerLookup := make(map[int32]*sarama.Broker, len(brokers))
+	brokerIDs := make([]int32, 0, len(brokers))
+	for _, broker := range brokers {
+		brokerLookup[broker.ID()] = broker
+		brokerIDs = append(brokerIDs, broker.ID())
+	}
+
+	topicSet := map[string]struct{}{topicName: {}}
+	_, partitionLogSize, err := describeLogDirs(admin, brokerIDs, topicSet)
+	if err != nil {
+		partitionLogSize = map[int32]map[string]map[int32]int64{}
+	}
+
+	client, err := s.kafkaManager.CreateClient(cluster)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	partitions := make([]dto.TopicPartitionDetail, 0, len(topicMetadata.Partitions))
+	for _, partition := range topicMetadata.Partitions {
+		if partition == nil {
+			continue
 		}
 
-		partitions = append(partitions, dto.PartitionInfo{
-			Partition: partition.ID,
-			Leader:    partition.Leader,
-			Replicas:  partition.Replicas,
-			ISR:       partition.Isr,
-			Offset:    offset,
+		beginning, err := client.GetOffset(topicName, partition.ID, sarama.OffsetOldest)
+		if err != nil {
+			beginning = -1
+		}
+		end, err := client.GetOffset(topicName, partition.ID, sarama.OffsetNewest)
+		if err != nil {
+			end = -1
+		}
+
+		leaderNode := partition.Leader
+		leader := dto.PartitionNode{ID: leaderNode, Host: "", Port: 0, LogSize: -1}
+		if broker, ok := brokerLookup[leaderNode]; ok && broker != nil {
+			host, port := splitHostPort(broker.Addr())
+			leader.Host = host
+			leader.Port = port
+			if sizeMap, ok := partitionLogSize[leaderNode]; ok {
+				if topicMap, ok := sizeMap[topicName]; ok {
+					if size, ok := topicMap[partition.ID]; ok {
+						leader.LogSize = size
+					}
+				}
+			}
+		}
+
+		replicas := make([]dto.PartitionNode, 0, len(partition.Replicas))
+		for _, replicaID := range partition.Replicas {
+			node := dto.PartitionNode{ID: replicaID, Host: "", Port: 0, LogSize: -1}
+			if broker, ok := brokerLookup[replicaID]; ok && broker != nil {
+				host, port := splitHostPort(broker.Addr())
+				node.Host = host
+				node.Port = port
+				if sizeMap, ok := partitionLogSize[replicaID]; ok {
+					if topicMap, ok := sizeMap[topicName]; ok {
+						if size, ok := topicMap[partition.ID]; ok {
+							node.LogSize = size
+						}
+					}
+				}
+			}
+			replicas = append(replicas, node)
+		}
+
+		isrNodes := make([]dto.PartitionNode, 0, len(partition.Isr))
+		for _, isrID := range partition.Isr {
+			node := dto.PartitionNode{ID: isrID, Host: "", Port: 0, LogSize: -1}
+			if broker, ok := brokerLookup[isrID]; ok && broker != nil {
+				host, port := splitHostPort(broker.Addr())
+				node.Host = host
+				node.Port = port
+				if sizeMap, ok := partitionLogSize[isrID]; ok {
+					if topicMap, ok := sizeMap[topicName]; ok {
+						if size, ok := topicMap[partition.ID]; ok {
+							node.LogSize = size
+						}
+					}
+				}
+			}
+			isrNodes = append(isrNodes, node)
+		}
+
+		partitions = append(partitions, dto.TopicPartitionDetail{
+			Partition:       partition.ID,
+			Leader:          leader,
+			Replicas:        replicas,
+			ISR:             isrNodes,
+			BeginningOffset: beginning,
+			EndOffset:       end,
 		})
 	}
 
-	// Get topic configs
+	sort.Slice(partitions, func(i, j int) bool {
+		return partitions[i].Partition < partitions[j].Partition
+	})
+
+	return partitions, nil
+}
+
+// GetTopicBrokers returns broker level statistics for a given topic.
+func (s *TopicService) GetTopicBrokers(clusterID uint, topicName string) ([]dto.BrokerDetail, error) {
+	_, admin, err := s.getClusterAndAdmin(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := admin.DescribeTopics([]string{topicName})
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe topic: %w", err)
+	}
+	if len(metadata) == 0 || metadata[0] == nil || metadata[0].Err != sarama.ErrNoError {
+		return nil, fmt.Errorf("topic not found: %s", topicName)
+	}
+	topicMetadata := metadata[0]
+
+	brokers, _, err := admin.DescribeCluster()
+	if err != nil {
+		return nil, fmt.Errorf("failed to describe cluster: %w", err)
+	}
+
+	brokerMap := make(map[int32]*dto.BrokerDetail, len(brokers))
+	for _, broker := range brokers {
+		host, port := splitHostPort(broker.Addr())
+		brokerMap[broker.ID()] = &dto.BrokerDetail{
+			ID:                 broker.ID(),
+			Host:               host,
+			Port:               port,
+			LeaderPartitions:   []int32{},
+			FollowerPartitions: []int32{},
+		}
+	}
+
+	for _, partition := range topicMetadata.Partitions {
+		if partition == nil {
+			continue
+		}
+		if broker, ok := brokerMap[partition.Leader]; ok {
+			broker.LeaderPartitions = append(broker.LeaderPartitions, partition.ID)
+		}
+		for _, replicaID := range partition.Replicas {
+			if broker, ok := brokerMap[replicaID]; ok {
+				broker.FollowerPartitions = append(broker.FollowerPartitions, partition.ID)
+			}
+		}
+	}
+
+	result := make([]dto.BrokerDetail, 0, len(brokerMap))
+	for _, broker := range brokerMap {
+		if len(broker.LeaderPartitions) == 0 && len(broker.FollowerPartitions) == 0 {
+			continue
+		}
+		sort.Slice(broker.LeaderPartitions, func(i, j int) bool {
+			return broker.LeaderPartitions[i] < broker.LeaderPartitions[j]
+		})
+		sort.Slice(broker.FollowerPartitions, func(i, j int) bool {
+			return broker.FollowerPartitions[i] < broker.FollowerPartitions[j]
+		})
+		result = append(result, *broker)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID < result[j].ID
+	})
+
+	return result, nil
+}
+
+// GetTopicConsumerGroups returns consumer groups that are consuming the given topic.
+func (s *TopicService) GetTopicConsumerGroups(clusterID uint, topicName string) ([]dto.TopicConsumerGroup, error) {
+	cluster, admin, err := s.getClusterAndAdmin(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
+	groupMap, err := admin.ListConsumerGroups()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list consumer groups: %w", err)
+	}
+	if len(groupMap) == 0 {
+		return []dto.TopicConsumerGroup{}, nil
+	}
+
+	groupIDs := make([]string, 0, len(groupMap))
+	for groupID := range groupMap {
+		groupIDs = append(groupIDs, groupID)
+	}
+
+	client, err := s.kafkaManager.CreateClient(cluster)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+
+	type groupLag struct {
+		groupID string
+		lag     int64
+	}
+
+	consumerGroups := make([]groupLag, 0, len(groupIDs))
+	for _, groupID := range groupIDs {
+		offsets, err := admin.ListConsumerGroupOffsets(groupID, map[string][]int32{topicName: nil})
+		if err != nil {
+			continue
+		}
+
+		blocks, ok := offsets.Blocks[topicName]
+		if !ok || len(blocks) == 0 {
+			continue
+		}
+
+		var lagSum int64
+		for partitionID, block := range blocks {
+			if block == nil || block.Offset < 0 {
+				continue
+			}
+			logSize, err := client.GetOffset(topicName, partitionID, sarama.OffsetNewest)
+			if err != nil || logSize < 0 {
+				continue
+			}
+			lagSum += logSize - block.Offset
+		}
+
+		consumerGroups = append(consumerGroups, groupLag{
+			groupID: groupID,
+			lag:     lagSum,
+		})
+	}
+
+	sort.Slice(consumerGroups, func(i, j int) bool {
+		return consumerGroups[i].groupID < consumerGroups[j].groupID
+	})
+
+	result := make([]dto.TopicConsumerGroup, 0, len(consumerGroups))
+	for _, cg := range consumerGroups {
+		result = append(result, dto.TopicConsumerGroup{
+			GroupID: cg.groupID,
+			Lag:     cg.lag,
+		})
+	}
+	return result, nil
+}
+
+// GetTopicConfigs returns topic configuration entries.
+func (s *TopicService) GetTopicConfigs(clusterID uint, topicName string) ([]dto.TopicConfig, error) {
+	_, admin, err := s.getClusterAndAdmin(clusterID)
+	if err != nil {
+		return nil, err
+	}
+
 	configResource := sarama.ConfigResource{
 		Type: sarama.TopicResource,
 		Name: topicName,
@@ -136,37 +514,32 @@ func (s *TopicService) GetTopicDetail(clusterID uint, topicName string) (*dto.To
 		return nil, fmt.Errorf("failed to describe topic config: %w", err)
 	}
 
-	var topicConfigs []dto.TopicConfig
-	for _, config := range configs {
-		topicConfigs = append(topicConfigs, dto.TopicConfig{
-			Name:      config.Name,
-			Value:     config.Value,
-			ReadOnly:  config.ReadOnly,
-			Sensitive: config.Sensitive,
+	result := make([]dto.TopicConfig, 0, len(configs))
+	for _, entry := range configs {
+		result = append(result, dto.TopicConfig{
+			Name:      entry.Name,
+			Value:     entry.Value,
+			Default:   entry.Default,
+			ReadOnly:  entry.ReadOnly,
+			Sensitive: entry.Sensitive,
 		})
 	}
 
-	return &dto.TopicDetail{
-		Name:       topicName,
-		Partitions: partitions,
-		Configs:    topicConfigs,
-	}, nil
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Name < result[j].Name
+	})
+
+	return result, nil
 }
 
 // CreateTopic creates a new topic
 func (s *TopicService) CreateTopic(clusterID uint, req *dto.CreateTopicRequest) error {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return err
-	}
-
-	// Convert config map to pointer map
-	configEntries := make(map[string]*string)
+	configEntries := make(map[string]*string, len(req.Configs))
 	for key, value := range req.Configs {
 		v := value
 		configEntries[key] = &v
@@ -178,83 +551,61 @@ func (s *TopicService) CreateTopic(clusterID uint, req *dto.CreateTopicRequest) 
 		ConfigEntries:     configEntries,
 	}
 
-	err = admin.CreateTopic(req.Name, topicDetail, false)
-	if err != nil {
+	if err := admin.CreateTopic(req.Name, topicDetail, false); err != nil {
 		return fmt.Errorf("failed to create topic: %w", err)
 	}
-
 	return nil
 }
 
 // DeleteTopics deletes multiple topics
 func (s *TopicService) DeleteTopics(clusterID uint, topicNames []string) error {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+	if len(topicNames) == 0 {
+		return errors.New("no topic specified")
+	}
+
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return err
-	}
-
-	err = admin.DeleteTopic(topicNames[0])
-	if err != nil {
+	if err := admin.DeleteTopic(topicNames[0]); err != nil {
 		return fmt.Errorf("failed to delete topic: %w", err)
 	}
-
-	// Delete remaining topics
 	for i := 1; i < len(topicNames); i++ {
-		admin.DeleteTopic(topicNames[i])
+		_ = admin.DeleteTopic(topicNames[i])
 	}
-
 	return nil
 }
 
 // ExpandPartitions expands the number of partitions for a topic
 func (s *TopicService) ExpandPartitions(clusterID uint, topicName string, count int32) error {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return err
-	}
-
-	err = admin.CreatePartitions(topicName, count, nil, false)
-	if err != nil {
+	if err := admin.CreatePartitions(topicName, count, nil, false); err != nil {
 		return fmt.Errorf("failed to expand partitions: %w", err)
 	}
-
 	return nil
 }
 
 // UpdateTopicConfigs updates topic configurations
 func (s *TopicService) UpdateTopicConfigs(clusterID uint, topicName string, configs map[string]string) error {
-	cluster, err := s.clusterRepo.FindByID(clusterID)
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return err
 	}
 
-	admin, err := s.kafkaManager.GetAdminClient(cluster)
-	if err != nil {
-		return err
-	}
-
-	// Build config map
-	configMap := make(map[string]*string)
+	configMap := make(map[string]*string, len(configs))
 	for key, value := range configs {
 		v := value
 		configMap[key] = &v
 	}
 
-	err = admin.AlterConfig(sarama.TopicResource, topicName, configMap, false)
-	if err != nil {
+	if err := admin.AlterConfig(sarama.TopicResource, topicName, configMap, false); err != nil {
 		return fmt.Errorf("failed to alter topic config: %w", err)
 	}
-
 	return nil
 }
 
@@ -277,17 +628,34 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 	}
 	defer partitionConsumer.Close()
 
-	var messages []dto.MessageRecord
-	timeout := time.After(5 * time.Second)
+	var (
+		messages    []dto.MessageRecord
+		initialWait = 5 * time.Second
+		idleWait    = 200 * time.Millisecond
+		timer       = time.NewTimer(initialWait)
+	)
+	defer timer.Stop()
+
+	resetTimer := func(d time.Duration) {
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		timer.Reset(d)
+	}
 
 	for len(messages) < limit {
 		select {
-		case msg := <-partitionConsumer.Messages():
-			headers := make(map[string]string)
+		case msg, ok := <-partitionConsumer.Messages():
+			if !ok {
+				return messages, nil
+			}
+			headers := make(map[string]string, len(msg.Headers))
 			for _, header := range msg.Headers {
 				headers[string(header.Key)] = string(header.Value)
 			}
-
 			messages = append(messages, dto.MessageRecord{
 				Partition: msg.Partition,
 				Offset:    msg.Offset,
@@ -296,7 +664,13 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 				Timestamp: msg.Timestamp.UnixMilli(),
 				Headers:   headers,
 			})
-		case <-timeout:
+
+			if len(messages) >= limit {
+				return messages, nil
+			}
+
+			resetTimer(idleWait)
+		case <-timer.C:
 			return messages, nil
 		}
 	}
@@ -317,7 +691,6 @@ func (s *TopicService) SendMessage(clusterID uint, topicName string, req *dto.Se
 	}
 	defer producer.Close()
 
-	// Build message
 	msg := &sarama.ProducerMessage{
 		Topic: topicName,
 		Value: sarama.StringEncoder(req.Value),
@@ -327,7 +700,6 @@ func (s *TopicService) SendMessage(clusterID uint, topicName string, req *dto.Se
 		msg.Key = sarama.StringEncoder(req.Key)
 	}
 
-	// Add headers
 	for key, value := range req.Headers {
 		msg.Headers = append(msg.Headers, sarama.RecordHeader{
 			Key:   []byte(key),
@@ -335,10 +707,75 @@ func (s *TopicService) SendMessage(clusterID uint, topicName string, req *dto.Se
 		})
 	}
 
-	_, _, err = producer.SendMessage(msg)
-	if err != nil {
+	if _, _, err := producer.SendMessage(msg); err != nil {
 		return fmt.Errorf("failed to send message: %w", err)
 	}
-
 	return nil
+}
+
+func (s *TopicService) getClusterAndAdmin(clusterID uint) (*model.Cluster, sarama.ClusterAdmin, error) {
+	cluster, err := s.clusterRepo.FindByID(clusterID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	admin, err := s.kafkaManager.GetAdminClient(cluster)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cluster, admin, nil
+}
+
+func describeLogDirs(admin sarama.ClusterAdmin, brokerIDs []int32, topicFilter map[string]struct{}) (map[string]int64, map[int32]map[string]map[int32]int64, error) {
+	if len(brokerIDs) == 0 {
+		return map[string]int64{}, map[int32]map[string]map[int32]int64{}, nil
+	}
+
+	logDirs, err := admin.DescribeLogDirs(brokerIDs)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	total := make(map[string]int64)
+	perBroker := make(map[int32]map[string]map[int32]int64)
+
+	for brokerID, dirMetadata := range logDirs {
+		for _, dir := range dirMetadata {
+			for _, topic := range dir.Topics {
+				if len(topicFilter) > 0 {
+					if _, ok := topicFilter[topic.Topic]; !ok {
+						continue
+					}
+				}
+				if _, ok := total[topic.Topic]; !ok {
+					total[topic.Topic] = 0
+				}
+				for _, partition := range topic.Partitions {
+					total[topic.Topic] += partition.Size
+
+					if _, ok := perBroker[brokerID]; !ok {
+						perBroker[brokerID] = make(map[string]map[int32]int64)
+					}
+					if _, ok := perBroker[brokerID][topic.Topic]; !ok {
+						perBroker[brokerID][topic.Topic] = make(map[int32]int64)
+					}
+					perBroker[brokerID][topic.Topic][partition.PartitionID] += partition.Size
+				}
+			}
+		}
+	}
+
+	return total, perBroker, nil
+}
+
+func splitHostPort(addr string) (string, int32) {
+	host, portStr, err := net.SplitHostPort(addr)
+	if err != nil {
+		return addr, 0
+	}
+	port64, err := strconv.ParseInt(portStr, 10, 32)
+	if err != nil {
+		return host, 0
+	}
+	return host, int32(port64)
 }

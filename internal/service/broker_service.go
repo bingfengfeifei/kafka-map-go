@@ -51,6 +51,26 @@ func (s *BrokerService) GetBrokers(clusterID uint) ([]dto.BrokerInfo, error) {
 	return brokerInfos, nil
 }
 
+// CountBrokers returns the count of brokers for a cluster
+func (s *BrokerService) CountBrokers(clusterID uint) (int, error) {
+	cluster, err := s.clusterRepo.FindByID(clusterID)
+	if err != nil {
+		return 0, err
+	}
+
+	admin, err := s.kafkaManager.GetAdminClient(cluster)
+	if err != nil {
+		return 0, err
+	}
+
+	brokers, _, err := admin.DescribeCluster()
+	if err != nil {
+		return 0, fmt.Errorf("failed to describe cluster: %w", err)
+	}
+
+	return len(brokers), nil
+}
+
 // GetBrokerConfigs retrieves broker configurations
 func (s *BrokerService) GetBrokerConfigs(clusterID uint, brokerID int32) ([]dto.BrokerConfig, error) {
 	cluster, err := s.clusterRepo.FindByID(clusterID)

@@ -13,19 +13,30 @@ import (
 )
 
 type ClusterService struct {
-	clusterRepo   *repository.ClusterRepository
-	kafkaManager  *util.KafkaClientManager
+	clusterRepo          *repository.ClusterRepository
+	kafkaManager         *util.KafkaClientManager
+	topicService         *TopicService
+	brokerService        *BrokerService
+	consumerGroupService *ConsumerGroupService
 }
 
-func NewClusterService(clusterRepo *repository.ClusterRepository, kafkaManager *util.KafkaClientManager) *ClusterService {
+func NewClusterService(clusterRepo *repository.ClusterRepository, kafkaManager *util.KafkaClientManager, topicService *TopicService, brokerService *BrokerService, consumerGroupService *ConsumerGroupService) *ClusterService {
 	return &ClusterService{
-		clusterRepo:  clusterRepo,
-		kafkaManager: kafkaManager,
+		clusterRepo:          clusterRepo,
+		kafkaManager:         kafkaManager,
+		topicService:         topicService,
+		brokerService:        brokerService,
+		consumerGroupService: consumerGroupService,
 	}
 }
 
 // Create creates a new cluster
 func (s *ClusterService) Create(cluster *model.Cluster) error {
+	// Set default security protocol if not provided
+	if cluster.SecurityProtocol == "" {
+		cluster.SecurityProtocol = "PLAINTEXT"
+	}
+
 	// Validate connection
 	if err := s.validateConnection(cluster); err != nil {
 		return fmt.Errorf("connection validation failed: %w", err)
@@ -36,6 +47,11 @@ func (s *ClusterService) Create(cluster *model.Cluster) error {
 
 // Update updates an existing cluster
 func (s *ClusterService) Update(cluster *model.Cluster) error {
+	// Set default security protocol if not provided
+	if cluster.SecurityProtocol == "" {
+		cluster.SecurityProtocol = "PLAINTEXT"
+	}
+
 	// Validate connection
 	if err := s.validateConnection(cluster); err != nil {
 		return fmt.Errorf("connection validation failed: %w", err)
@@ -65,6 +81,11 @@ func (s *ClusterService) GetAll() ([]model.Cluster, error) {
 	return s.clusterRepo.FindAll()
 }
 
+// GetAllPaged retrieves clusters with pagination
+func (s *ClusterService) GetAllPaged(pageIndex, pageSize int, name string) ([]model.Cluster, int64, error) {
+	return s.clusterRepo.FindAllPaged(pageIndex, pageSize, name)
+}
+
 // GetClusterInfo retrieves cluster information with statistics
 func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 	cluster, err := s.clusterRepo.FindByID(id)
@@ -74,19 +95,77 @@ func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 
 	admin, err := s.kafkaManager.GetAdminClient(cluster)
 	if err != nil {
-		return nil, err
+		// Return basic cluster info without Kafka statistics
+		return &dto.ClusterInfo{
+			ID:               cluster.ID,
+			Name:             cluster.Name,
+			Servers:          cluster.Servers,
+			SecurityProtocol: cluster.SecurityProtocol,
+			SaslMechanism:    cluster.SaslMechanism,
+			SaslUsername:     cluster.SaslUsername,
+			BrokerCount:      0,
+			TopicCount:       0,
+			ConsumerCount:    0,
+			PartitionCount:   0,
+			ReplicaCount:     0,
+		}, nil
 	}
 
 	// Get brokers
 	brokers, _, err := admin.DescribeCluster()
 	if err != nil {
-		return nil, fmt.Errorf("failed to describe cluster: %w", err)
+		// Return basic cluster info without Kafka statistics
+		return &dto.ClusterInfo{
+			ID:               cluster.ID,
+			Name:             cluster.Name,
+			Servers:          cluster.Servers,
+			SecurityProtocol: cluster.SecurityProtocol,
+			SaslMechanism:    cluster.SaslMechanism,
+			SaslUsername:     cluster.SaslUsername,
+			BrokerCount:      0,
+			TopicCount:       0,
+			ConsumerCount:    0,
+			PartitionCount:   0,
+			ReplicaCount:     0,
+		}, nil
 	}
 
 	// Get topics
 	topics, err := admin.ListTopics()
 	if err != nil {
-		return nil, fmt.Errorf("failed to list topics: %w", err)
+		// Return basic cluster info without Kafka statistics
+		return &dto.ClusterInfo{
+			ID:               cluster.ID,
+			Name:             cluster.Name,
+			Servers:          cluster.Servers,
+			SecurityProtocol: cluster.SecurityProtocol,
+			SaslMechanism:    cluster.SaslMechanism,
+			SaslUsername:     cluster.SaslUsername,
+			BrokerCount:      len(brokers),
+			TopicCount:       0,
+			ConsumerCount:    0,
+			PartitionCount:   0,
+			ReplicaCount:     0,
+		}, nil
+	}
+
+	// Get consumer groups
+	groups, err := admin.ListConsumerGroups()
+	if err != nil {
+		// Return basic cluster info without consumer group statistics
+		return &dto.ClusterInfo{
+			ID:               cluster.ID,
+			Name:             cluster.Name,
+			Servers:          cluster.Servers,
+			SecurityProtocol: cluster.SecurityProtocol,
+			SaslMechanism:    cluster.SaslMechanism,
+			SaslUsername:     cluster.SaslUsername,
+			BrokerCount:      len(brokers),
+			TopicCount:       len(topics),
+			ConsumerCount:    0,
+			PartitionCount:   0,
+			ReplicaCount:     0,
+		}, nil
 	}
 
 	// Calculate statistics
@@ -108,6 +187,7 @@ func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 		SaslUsername:     cluster.SaslUsername,
 		BrokerCount:      len(brokers),
 		TopicCount:       len(topics),
+		ConsumerCount:    len(groups),
 		PartitionCount:   partitionCount,
 		ReplicaCount:     replicaCount,
 	}

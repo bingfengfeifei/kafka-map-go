@@ -3,12 +3,12 @@
 # Build the Go application
 build: build-frontend
 	@echo "Building Kafka-Map Go..."
-	go build -o kafka-map-go ./cmd/server
+	CGO_ENABLED=0 go build -o kafka-map-go ./cmd/server
 
 # Build with optimizations for production
 build-prod: build-frontend
 	@echo "Building Kafka-Map Go for production..."
-	CGO_ENABLED=0 go build -ldflags="-s -w" -o kafka-map-go ./cmd/server
+	CGO_ENABLED=0 go build -ldflags="-s -w"  -trimpath  -o kafka-map-go ./cmd/server
 
 # Run the application
 run: build
@@ -43,7 +43,8 @@ build-frontend:
 	@echo "Building frontend..."
 	cd web && npm install --legacy-peer-deps && npm run build
 	mkdir -p cmd/server/web
-	cp -r web/index.html web/assets cmd/server/web/
+	rm -rf cmd/server/web/assets
+	cp -rf web/dist/index.html web/dist/assets cmd/server/web/
 
 # Format code
 fmt:

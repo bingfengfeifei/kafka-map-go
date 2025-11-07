@@ -83,10 +83,19 @@ class Topic extends Component {
         let paramsStr = qs.stringify(queryParams);
         let items = [];
         try {
-            items = await request.get('/topics?' + paramsStr);
+            const response = await request.get('/topics?' + paramsStr);
+            items = response && Array.isArray(response.data) ? response.data : [];
         } catch (e) {
             console.log(e);
         } finally {
+            const clusterId = this.state.clusterId;
+            items = items.map(item => {
+                return {
+                    ...item,
+                    clusterId: item['clusterId'] ? item['clusterId'] : clusterId,
+                    deleting: false
+                }
+            });
             this.setState({
                 items: items,
                 queryParams: queryParams,
@@ -137,7 +146,7 @@ class Topic extends Component {
     };
 
     async delete(name, index) {
-        let items = this.state.items;
+        let items = this.state.items.slice();
         items[index]['deleting'] = true;
         this.setState({
             items: items
@@ -194,9 +203,15 @@ class Topic extends Component {
                 title: <FormattedMessage id="average-log-size"/>,
                 dataIndex: 'x',
                 key: 'x',
-                sorter: (a, b) => a['totalLogSize'] / a['replicaCount'] - b['totalLogSize'] / b['replicaCount'],
+                sorter: (a, b) => {
+                    const replicaA = a['replicaCount'] || 1;
+                    const replicaB = b['replicaCount'] || 1;
+                    const avgA = a['totalLogSize'] >= 0 ? a['totalLogSize'] / replicaA : -1;
+                    const avgB = b['totalLogSize'] >= 0 ? b['totalLogSize'] / replicaB : -1;
+                    return avgA - avgB;
+                },
                 render: (x, record) => {
-                    if (record['totalLogSize'] < 0) {
+                    if (record['totalLogSize'] < 0 || !record['replicaCount']) {
                         return '不支持';
                     }
                     return renderSize(record['totalLogSize'] / record['replicaCount'])

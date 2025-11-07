@@ -44,7 +44,8 @@ const TopicConfig = (props) => {
 
     const loadItems = async (clusterId, topic) => {
         setLoading(true);
-        let items = await request.get(`/topics/${topic}/configs?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}/configs?clusterId=${clusterId}`);
+        let items = response && Array.isArray(response.data) ? response.data : [];
         setData(items);
         setLoading(false);
     }

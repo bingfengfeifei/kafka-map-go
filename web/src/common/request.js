@@ -14,15 +14,21 @@ const handleError = (error) => {
         message.error('网络异常');
         return false;
     }
-    if (error.response !== undefined && error.response.status === 401) {
-        window.location.href = '#/login';
-        console.log('')
-        return false;
-    }
-
     if (error.response !== undefined) {
-        let data = error.response.data;
-        message.error(`${data.message}`, 10);
+        const { config, status, data } = error.response;
+        const isLoginRequest = config && config.url && config.url.includes('/login');
+
+        if (isLoginRequest) {
+            message.error((data && data.message) || '登录失败，请检查用户名和密码', 3);
+            return false;
+        }
+
+        if (status === 401) {
+            window.location.href = '#/login';
+            return false;
+        }
+
+        message.error(`${data && data.message}`, 10);
         return false;
     }
     return true;

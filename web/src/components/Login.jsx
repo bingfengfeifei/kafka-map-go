@@ -30,10 +30,15 @@ class Login extends Component {
 
         try {
             let result = await request.post('/login', params);
-            // 跳转登录
-            localStorage.setItem('X-Auth-Token', result['token']);
-            // this.props.history.push();
-            window.location.href = "/"
+            // 登录成功，保存token
+            if (result.code === 200 && result.data && result.data.token) {
+                localStorage.setItem('X-Auth-Token', result.data.token);
+                // 跳转到首页
+                window.location.href = "/"
+            }
+        } catch (error) {
+            console.error('Login failed:', error);
+            // 错误处理已在request.js中完成，这里不需要额外处理
         } finally {
             this.setState({
                 inLogin: false

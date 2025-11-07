@@ -32,6 +32,29 @@ func (r *ClusterRepository) FindAll() ([]model.Cluster, error) {
 	return clusters, err
 }
 
+func (r *ClusterRepository) FindAllPaged(pageIndex, pageSize int, name string) ([]model.Cluster, int64, error) {
+	var clusters []model.Cluster
+	var total int64
+
+	query := r.db.Model(&model.Cluster{})
+
+	// Apply name filter if provided
+	if name != "" {
+		query = query.Where("name LIKE ?", "%"+name+"%")
+	}
+
+	// Count total
+	err := query.Count(&total).Error
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Get paginated results
+	offset := (pageIndex - 1) * pageSize
+	err = query.Offset(offset).Limit(pageSize).Find(&clusters).Error
+	return clusters, total, err
+}
+
 func (r *ClusterRepository) Update(cluster *model.Cluster) error {
 	return r.db.Save(cluster).Error
 }

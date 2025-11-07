@@ -54,7 +54,8 @@ class TopicDataLive extends Component {
     }
 
     loadTopicInfo = async (clusterId, topic) => {
-        let result = await request.get(`/topics/${topic}?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}?clusterId=${clusterId}`);
+        let result = response && response.data ? response.data : { partitions: [] };
         this.setState({
             topicInfo: result
         });
@@ -97,15 +98,20 @@ class TopicDataLive extends Component {
 
         eventSource.addEventListener("topic-message-event", (event) => {
             let liveMessage = JSON.parse(event.data);
-            let items = this.state.items;
+            let items = this.state.items.slice();
             items.push(...liveMessage['messages']);
             if (items.length > 100) {
                 items = items.slice(-100);
             }
 
-            let topicInfo = this.state.topicInfo;
-            topicInfo['partitions'][liveMessage['partition']]['beginningOffset'] = liveMessage['beginningOffset'];
-            topicInfo['partitions'][liveMessage['partition']]['endOffset'] = liveMessage['endOffset'];
+            let topicInfo = {...this.state.topicInfo};
+            if (Array.isArray(topicInfo['partitions']) && topicInfo['partitions'][liveMessage['partition']]) {
+                topicInfo['partitions'][liveMessage['partition']] = {
+                    ...topicInfo['partitions'][liveMessage['partition']],
+                    beginningOffset: liveMessage['beginningOffset'],
+                    endOffset: liveMessage['endOffset']
+                };
+            }
 
             this.setState({
                 items: items,
@@ -131,6 +137,11 @@ class TopicDataLive extends Component {
 
     render() {
 
+        const partitions = this.state.topicInfo && Array.isArray(this.state.topicInfo['partitions']) ?
+            this.state.topicInfo['partitions'] : [];
+        const partitionIndex = this.state.partition < partitions.length ? this.state.partition : 0;
+        const selectedPartition = partitions.length > 0 ? partitions[partitionIndex] : null;
+
         return (
             <div>
                 <div className='kd-page-header'>
@@ -148,11 +159,11 @@ class TopicDataLive extends Component {
                                     this.state.topicInfo ?
                                         <>
                                             <Statistic title="Beginning Offset"
-                                                       value={this.state.topicInfo['partitions'][this.state.partition]['beginningOffset']}/>
+                                                       value={selectedPartition ? selectedPartition['beginningOffset'] : '-'}/>
                                             <Statistic title="End Offset"
-                                                       value={this.state.topicInfo['partitions'][this.state.partition]['endOffset']}/>
+                                                       value={selectedPartition ? selectedPartition['endOffset'] : '-'}/>
                                             <Statistic title="Size"
-                                                       value={this.state.topicInfo['partitions'][this.state.partition]['endOffset'] - this.state.topicInfo['partitions'][this.state.partition]['beginningOffset']}/>
+                                                       value={selectedPartition ? selectedPartition['endOffset'] - selectedPartition['beginningOffset'] : '-'}/>
                                         </>
                                         : undefined
                                 }
@@ -180,7 +191,7 @@ class TopicDataLive extends Component {
                                     }}>
                                         {
                                             this.state.topicInfo ?
-                                                this.state.topicInfo['partitions'].map(item => {
+                                                partitions.map(item => {
                                                     return <Select.Option key={'p' + item['partition']}
                                                                           value={item['partition']}>{item['partition']}</Select.Option>
                                                 }) : undefined

@@ -94,10 +94,12 @@ class Cluster extends Component {
         } catch (e) {
             console.log(e);
         } finally {
-            const items = data.items;
+            // API返回格式: {code: 200, message: "Success", data: {items: [], total: 5}}
+            // 需要从data.data中获取items和total
+            const items = data.data ? data.data.items : [];
             this.setState({
                 items: items,
-                total: data.total,
+                total: data.data ? data.data.total : 0,
                 queryParams: queryParams,
                 loading: false
             });
@@ -113,6 +115,11 @@ class Cluster extends Component {
         let cluster;
         try {
             cluster = await request.get('/clusters/' + clusterId);
+            // API返回格式: {code: 200, message: "Success", data: {...}}
+            // 需要从data中获取统计信息
+            if (cluster && cluster.data) {
+                cluster = cluster.data;
+            }
         } catch (e) {
             cluster = {
                 topicCount: 0,

@@ -51,7 +51,16 @@ class TopicConsumerGroupOffset extends Component {
         this.setState({
             loading: true
         })
-        let items = await request.get(`/topics/${topic}/consumerGroups/${groupId}/offset?clusterId=${clusterId}`);
+        let response = await request.get(`/topics/${topic}/consumerGroups/${groupId}/offset?clusterId=${clusterId}`);
+        let items = response && Array.isArray(response.data) ? response.data : [];
+        items = items.map(item => {
+            return {
+                ...item,
+                beginningOffset: item.beginningOffset !== undefined && item.beginningOffset !== null ? item.beginningOffset : null,
+                endOffset: item.endOffset !== undefined && item.endOffset !== null ? item.endOffset : null,
+                consumerOffset: item.consumerOffset !== undefined && item.consumerOffset !== null ? item.consumerOffset : null
+            }
+        });
         this.setState({
             items: items,
             loading: false
@@ -85,8 +94,15 @@ class TopicConsumerGroupOffset extends Component {
             title: 'Lag',
             dataIndex: 'lag',
             key: 'lag',
-            sorter: (a, b) => a['lag'] - b['lag'],
+            sorter: (a, b) => {
+                const lagA = a['endOffset'] !== null && a['consumerOffset'] !== null ? a['endOffset'] - a['consumerOffset'] : -Infinity;
+                const lagB = b['endOffset'] !== null && b['consumerOffset'] !== null ? b['endOffset'] - b['consumerOffset'] : -Infinity;
+                return lagA - lagB;
+            },
             render: (lag, record, index) => {
+                if (record['endOffset'] === null || record['consumerOffset'] === null) {
+                    return '-';
+                }
                 return record['endOffset'] - record['consumerOffset']
             }
         }, {
@@ -132,6 +148,7 @@ class TopicConsumerGroupOffset extends Component {
 
                 <Table key='table'
                        dataSource={this.state.items}
+                       rowKey={record => `${record['topic'] || 'topic'}-${record['partition']}`}
                        columns={columns}
                        position={'both'}
                        pagination={{
@@ -143,7 +160,7 @@ class TopicConsumerGroupOffset extends Component {
                 />
 
                 <Drawer
-                    title={'Partition: ' + this.state.selectedRow['partition']}
+                    title={'Partition: ' + (this.state.selectedRow['partition'] !== undefined ? this.state.selectedRow['partition'] : '-')}
                     width={window.innerWidth * 0.3}
                     closable={true}
                     onClose={() => {

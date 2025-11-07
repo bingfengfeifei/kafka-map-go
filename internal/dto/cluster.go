@@ -10,11 +10,12 @@ type ClusterInfo struct {
 	SaslUsername     string `json:"saslUsername"`
 	BrokerCount      int    `json:"brokerCount"`
 	TopicCount       int    `json:"topicCount"`
+	ConsumerCount    int    `json:"consumerCount"`
 	PartitionCount   int    `json:"partitionCount"`
 	ReplicaCount     int    `json:"replicaCount"`
 }
 
-// BrokerInfo represents broker information
+// BrokerInfo is a lightweight broker descriptor used in various places.
 type BrokerInfo struct {
 	ID   int32  `json:"id"`
 	Host string `json:"host"`
@@ -22,44 +23,74 @@ type BrokerInfo struct {
 	Rack string `json:"rack,omitempty"`
 }
 
+// BrokerDetail represents broker information together with topic level statistics.
+type BrokerDetail struct {
+	ID                 int32   `json:"id"`
+	Host               string  `json:"host"`
+	Port               int32   `json:"port"`
+	LeaderPartitions   []int32 `json:"leaderPartitions"`
+	FollowerPartitions []int32 `json:"followerPartitions"`
+}
+
 // BrokerConfig represents broker configuration
 type BrokerConfig struct {
 	Name      string `json:"name"`
 	Value     string `json:"value"`
-	ReadOnly  bool   `json:"readOnly"`
+	Default   bool   `json:"_default"`
+	ReadOnly  bool   `json:"readonly"`
 	Sensitive bool   `json:"sensitive"`
 }
 
-// TopicInfo represents topic information
-type TopicInfo struct {
-	Name           string `json:"name"`
-	Partitions     int    `json:"partitions"`
-	Replicas       int    `json:"replicas"`
-	ISR            int    `json:"isr"`
-	UnderReplicated bool  `json:"underReplicated"`
+// TopicSummary represents topic information shown in the topic list.
+type TopicSummary struct {
+	ClusterID        string `json:"clusterId"`
+	Name             string `json:"name"`
+	PartitionsCount  int    `json:"partitionsCount"`
+	ReplicaCount     int    `json:"replicaCount"`
+	TotalLogSize     int64  `json:"totalLogSize"`
+	ConsumerGroupCnt int    `json:"consumerGroupCount"`
 }
 
-// TopicDetail represents detailed topic information
+// TopicDetail represents topic overview with partition offsets.
 type TopicDetail struct {
-	Name       string            `json:"name"`
-	Partitions []PartitionInfo   `json:"partitions"`
-	Configs    []TopicConfig     `json:"configs"`
+	ClusterID    string                  `json:"clusterId"`
+	Name         string                  `json:"name"`
+	ReplicaCount int                     `json:"replicaCount"`
+	TotalLogSize int64                   `json:"totalLogSize"`
+	Partitions   []TopicPartitionSummary `json:"partitions"`
 }
 
-// PartitionInfo represents partition information
-type PartitionInfo struct {
-	Partition int32   `json:"partition"`
-	Leader    int32   `json:"leader"`
-	Replicas  []int32 `json:"replicas"`
-	ISR       []int32 `json:"isr"`
-	Offset    int64   `json:"offset"`
+// TopicPartitionSummary captures the offsets for a partition.
+type TopicPartitionSummary struct {
+	Partition       int32 `json:"partition"`
+	BeginningOffset int64 `json:"beginningOffset"`
+	EndOffset       int64 `json:"endOffset"`
 }
 
-// TopicConfig represents topic configuration
+// TopicPartitionDetail represents detailed partition information.
+type TopicPartitionDetail struct {
+	Partition       int32           `json:"partition"`
+	Leader          PartitionNode   `json:"leader"`
+	ISR             []PartitionNode `json:"isr"`
+	Replicas        []PartitionNode `json:"replicas"`
+	BeginningOffset int64           `json:"beginningOffset"`
+	EndOffset       int64           `json:"endOffset"`
+}
+
+// PartitionNode represents metadata for a broker participating in a partition.
+type PartitionNode struct {
+	ID      int32  `json:"id"`
+	Host    string `json:"host"`
+	Port    int32  `json:"port"`
+	LogSize int64  `json:"logSize"`
+}
+
+// TopicConfig represents topic configuration entries.
 type TopicConfig struct {
 	Name      string `json:"name"`
 	Value     string `json:"value"`
-	ReadOnly  bool   `json:"readOnly"`
+	Default   bool   `json:"_default"`
+	ReadOnly  bool   `json:"readonly"`
 	Sensitive bool   `json:"sensitive"`
 }
 
@@ -71,21 +102,51 @@ type CreateTopicRequest struct {
 	Configs           map[string]string `json:"configs"`
 }
 
-// ConsumerGroupInfo represents consumer group information
-type ConsumerGroupInfo struct {
+// TopicConsumerGroup represents aggregated lag information for a consumer group on a topic.
+type TopicConsumerGroup struct {
 	GroupID string `json:"groupId"`
-	State   string `json:"state"`
-	Members int    `json:"members"`
+	Lag     int64  `json:"lag"`
+}
+
+// TopicOffset represents offsets for a consumer group partition.
+type TopicOffset struct {
+	GroupID         string `json:"groupId"`
+	Topic           string `json:"topic"`
+	Partition       int32  `json:"partition"`
+	ConsumerOffset  *int64 `json:"consumerOffset"`
+	BeginningOffset *int64 `json:"beginningOffset"`
+	EndOffset       *int64 `json:"endOffset"`
+}
+
+// ConsumerGroupDescribe represents detailed consumer group assignment information.
+type ConsumerGroupDescribe struct {
+	GroupID       string `json:"groupId"`
+	Topic         string `json:"topic"`
+	Partition     int32  `json:"partition"`
+	CurrentOffset *int64 `json:"currentOffset"`
+	LogBeginning  *int64 `json:"logBeginningOffset"`
+	LogEnd        *int64 `json:"logEndOffset"`
+	Lag           *int64 `json:"lag"`
+	ConsumerID    string `json:"consumerId,omitempty"`
+	Host          string `json:"host,omitempty"`
+	ClientID      string `json:"clientId,omitempty"`
+}
+
+// ConsumerGroupInfo represents basic consumer group information for listing.
+type ConsumerGroupInfo struct {
+	GroupID string   `json:"groupId"`
+	Topics  []string `json:"topics"`
+	Lag     int64    `json:"lag"`
 }
 
 // ConsumerGroupDetail represents detailed consumer group information
 type ConsumerGroupDetail struct {
-	GroupID     string                  `json:"groupId"`
-	State       string                  `json:"state"`
-	Protocol    string                  `json:"protocol"`
-	Members     []MemberInfo            `json:"members"`
-	Coordinator BrokerInfo              `json:"coordinator"`
-	Offsets     []ConsumerGroupOffset   `json:"offsets"`
+	GroupID     string                `json:"groupId"`
+	State       string                `json:"state"`
+	Protocol    string                `json:"protocol"`
+	Members     []MemberInfo          `json:"members"`
+	Coordinator BrokerInfo            `json:"coordinator"`
+	Offsets     []ConsumerGroupOffset `json:"offsets"`
 }
 
 // MemberInfo represents consumer group member information
