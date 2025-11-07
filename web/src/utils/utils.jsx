@@ -153,8 +153,8 @@ export const NT_PACKAGE = () => {
     // const name = _package.name;
     // const version = _package.version;
     return {
-        name: 'kafka-map',
-        version: 'v1.3.2'
+        name: 'kafka-map-go',
+        version: '1.0.0'
     }
 }
 

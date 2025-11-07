@@ -169,8 +169,10 @@ class App extends Component {
                                 </Content>
                             </Layout>
                         </Content>
-                        <Footer style={{textAlign: 'center'}}>kafka map ©2021 Created by dushixiang
-                            Version:{this.state.package['version']}</Footer>
+                        <Footer style={{textAlign: 'center'}}>
+                            Kafka Map Go ©2025 Created by bingfengfeifei &nbsp;
+                            Version: v{this.state.package['version'] || '1.0.0'}
+                        </Footer>
                     </Layout>
                 </ConfigProvider>
             </IntlProvider>
