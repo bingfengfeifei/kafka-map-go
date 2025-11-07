@@ -1,4 +1,4 @@
-# Kafka-Map Go
+# Kafka Map Go
 
 A Kafka visualization and management tool written in Go, converted from the original Java Spring Boot version.
 
@@ -20,7 +20,7 @@ A Kafka visualization and management tool written in Go, converted from the orig
 - **Gin** - Web framework
 - **GORM** - ORM for database operations
 - **Sarama** - Kafka client library
-- **SQLite** - Embedded database
+- **SQLite** - Embedded database (no CGO dependency)
 - **BCrypt** - Password encryption
 
 ### Frontend
@@ -32,7 +32,6 @@ A Kafka visualization and management tool written in Go, converted from the orig
 
 - Go 1.21 or higher
 - Node.js 18+ and npm (for building frontend)
-- GCC (for SQLite CGO support)
 
 ## Quick Start
 
@@ -247,19 +246,6 @@ make build-prod
 
 ## Troubleshooting
 
-### CGO Errors
-If you encounter CGO-related errors, ensure you have GCC installed:
-```bash
-# Ubuntu/Debian
-apt-get install build-essential
-
-# Alpine
-apk add gcc musl-dev
-
-# macOS
-xcode-select --install
-```
-
 ### Frontend Build Issues
 If frontend build fails, try:
 ```bash
@@ -279,7 +265,7 @@ This project is converted from the original Java version of Kafka-Map.
 
 ## Acknowledgments
 
-- Original Java version: [kafka-map](https://github.com/typesafe/kafka-map)
+- Project repository: [Kafka Map Go](https://github.com/bingfengfeifei/kafka-map-go)
 - Built with [Gin](https://github.com/gin-gonic/gin)
 - Kafka client: [Sarama](https://github.com/IBM/sarama)
 - ORM: [GORM](https://gorm.io)
