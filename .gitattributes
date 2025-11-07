@@ -1,0 +1,7 @@
+# Exclude frontend dependencies and build artifacts from language statistics
+web/node_modules/** linguist-vendored
+web/dist/** linguist-generated
+cmd/server/web/** linguist-generated
+
+# Mark the primary language
+*.go linguist-language=Go
