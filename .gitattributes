@@ -1,6 +1,8 @@
-# Exclude frontend dependencies and build artifacts from language statistics
-web/node_modules/** linguist-vendored
-web/dist/** linguist-generated
+# Exclude frontend code from language statistics
+# The frontend is embedded into the Go binary, so Go is the primary language
+web/** linguist-documentation
+
+# Exclude build artifacts
 cmd/server/web/** linguist-generated
 
 # Mark the primary language
