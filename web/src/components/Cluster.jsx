@@ -11,8 +11,7 @@ import {
     Space,
     Input,
     Divider,
-    Popconfirm,
-    Switch, Popover, Alert
+    Popconfirm
 } from "antd";
 import dayjs from "dayjs";
 import request from "../common/request";
@@ -31,23 +30,6 @@ import {FormattedMessage} from "react-intl";
 const confirm = Modal.confirm;
 const {Search} = Input;
 const {Title, Text} = Typography;
-
-const content = (
-    <div>
-        <Alert style={{marginTop: 5, marginBottom: 10}} message={<FormattedMessage id="delay-message-information1"/>}
-               type="info" showIcon/>
-        <p><FormattedMessage id="delay-message-information2"/></p>
-        <p><FormattedMessage id="delay-message-information3"/></p>
-        <pre>
-            {JSON.stringify({
-                "level": 0,
-                "topic": "target",
-                "key": "key",
-                "value": "value"
-            }, null, 4)}
-        </pre>
-    </div>
-);
 
 class Cluster extends Component {
 
@@ -263,25 +245,6 @@ class Cluster extends Component {
             title: <FormattedMessage id="servers"/>,
             dataIndex: 'servers',
             key: 'servers',
-        }, {
-            title: <FormattedMessage id="delay-message"/>,
-            dataIndex: 'delayMessageStatus',
-            key: 'delayMessageStatus',
-            render: (delayMessageStatus, record, index) => {
-                return <Popover content={content}>
-                    <Switch checked={delayMessageStatus === 'enabled'}
-                            onChange={async (checked) => {
-                                let url = `/clusters/${record['id']}/disableDelayMessage`;
-                                if (checked) {
-                                    url = `/clusters/${record['id']}/enableDelayMessage`;
-                                }
-                                await request.post(url);
-                                this.loadTableData()
-                            }
-                            }/>
-                </Popover>
-
-            }
         }, {
             title: <FormattedMessage id="topic"/>,
             dataIndex: 'topicCount',

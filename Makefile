@@ -1,34 +1,17 @@
-.PHONY: build run test clean install-deps build-frontend docker-build docker-run
+.PHONY: build build-arm clean build-frontend
+
+# Application version
+VERSION ?= 1.0.0
 
 # Build the Go application
 build: build-frontend
-	@echo "Building Kafka-Map Go..."
-	CGO_ENABLED=0 go build -o kafka-map-go ./cmd/server
-
-# Build with optimizations for production
-build-prod: build-frontend
-	@echo "Building Kafka-Map Go for production..."
+	@echo "Building Kafka-Map Go for Linux AMD64..."
 	CGO_ENABLED=0 go build -ldflags="-s -w"  -trimpath  -o kafka-map-go ./cmd/server
 
 # Build optimized binary for Linux ARM64
-build-prod-arm: build-frontend
+build-arm: build-frontend
 	@echo "Building Kafka-Map Go for Linux ARM64..."
 	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o kafka-map-go-arm64 ./cmd/server
-
-# Run the application
-run: build
-	@echo "Running Kafka-Map Go..."
-	./kafka-map-go
-
-# Run in development mode
-dev:
-	@echo "Running in development mode..."
-	go run ./cmd/server/main.go
-
-# Run tests
-test:
-	@echo "Running tests..."
-	go test -v ./...
 
 # Clean build artifacts
 clean:
@@ -36,12 +19,6 @@ clean:
 	rm -f kafka-map-go
 	rm -rf data/
 	rm -rf web/dist web/node_modules
-
-# Install Go dependencies
-install-deps:
-	@echo "Installing Go dependencies..."
-	go mod download
-	go mod tidy
 
 # Build frontend
 build-frontend:
@@ -56,33 +33,7 @@ fmt:
 	@echo "Formatting code..."
 	go fmt ./...
 
-# Lint code
-lint:
-	@echo "Linting code..."
-	golangci-lint run
-
 # Build Docker image
-docker-build:
-	@echo "Building Docker image..."
-	docker build -t kafka-map-go:latest .
-
-# Run Docker container
-docker-run:
-	@echo "Running Docker container..."
-	docker run -p 8080:8080 -v $(PWD)/data:/app/data kafka-map-go:latest
-
-# Show help
-help:
-	@echo "Available targets:"
-	@echo "  build          - Build the application"
-	@echo "  build-prod     - Build for production with optimizations"
-	@echo "  run            - Build and run the application"
-	@echo "  dev            - Run in development mode"
-	@echo "  test           - Run tests"
-	@echo "  clean          - Clean build artifacts"
-	@echo "  install-deps   - Install Go dependencies"
-	@echo "  build-frontend - Build frontend assets"
-	@echo "  fmt            - Format code"
-	@echo "  lint           - Lint code"
-	@echo "  docker-build   - Build Docker image"
-	@echo "  docker-run     - Run Docker container"
+docker:
+	@echo "Building Docker image with version $(VERSION)..."
+	docker build --build-arg APP_VERSION=$(VERSION) -t kafka-map-go:$(VERSION) -t kafka-map-go:latest .
