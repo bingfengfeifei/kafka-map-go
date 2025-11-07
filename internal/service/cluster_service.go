@@ -1,15 +1,18 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strings"
 	"time"
 
+	"github.com/bingfengfeifei/kafka-map-go/internal/config"
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
 	"github.com/bingfengfeifei/kafka-map-go/internal/model"
 	"github.com/bingfengfeifei/kafka-map-go/internal/repository"
 	"github.com/bingfengfeifei/kafka-map-go/internal/util"
+	"gorm.io/gorm"
 )
 
 type ClusterService struct {
@@ -144,6 +147,54 @@ func (s *ClusterService) GetClusterInfo(id uint) (*dto.ClusterInfo, error) {
 	info.ReplicaCount = replicaCount
 
 	return info, nil
+}
+
+// BootstrapClusters ensures clusters defined via configuration or environment variables exist.
+func (s *ClusterService) BootstrapClusters(clusters []config.BootstrapClusterConfig) error {
+	for _, bootstrap := range clusters {
+		if strings.TrimSpace(bootstrap.Name) == "" || strings.TrimSpace(bootstrap.Servers) == "" {
+			continue
+		}
+		if err := s.ensureClusterExists(bootstrap); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *ClusterService) ensureClusterExists(bootstrap config.BootstrapClusterConfig) error {
+	if _, err := s.clusterRepo.FindByName(bootstrap.Name); err == nil {
+		return nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	cluster := &model.Cluster{
+		Name:             bootstrap.Name,
+		Servers:          bootstrap.Servers,
+		SecurityProtocol: valueOrDefault(bootstrap.SecurityProtocol, "PLAINTEXT"),
+		SaslMechanism:    bootstrap.SaslMechanism,
+		SaslUsername:     firstNonEmpty(bootstrap.SaslUsername, bootstrap.AuthUsername),
+		SaslPassword:     firstNonEmpty(bootstrap.SaslPassword, bootstrap.AuthPassword),
+	}
+
+	return s.Create(cluster)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, v := range values {
+		if strings.TrimSpace(v) != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+func valueOrDefault(v, def string) string {
+	if strings.TrimSpace(v) == "" {
+		return def
+	}
+	return v
 }
 
 // validateConnection validates cluster connection

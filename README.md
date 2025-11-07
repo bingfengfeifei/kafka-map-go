@@ -102,6 +102,39 @@ cache:
   max_tokens: 100
 ```
 
+### Environment Variables
+
+You can override any of the YAML settings (or provide new defaults) via the following environment variables:
+
+| Variable | Description |
+| --- | --- |
+| `KAFKA_MAP_SERVER_PORT` | Override `server.port`. |
+| `KAFKA_MAP_DATABASE_PATH` | Override `database.path`. |
+| `DEFAULT_USERNAME` / `KAFKA_MAP_DEFAULT_USERNAME` | Override the initial admin username. |
+| `DEFAULT_PASSWORD` / `KAFKA_MAP_DEFAULT_PASSWORD` | Override the initial admin password. |
+| `KAFKA_MAP_CACHE_TOKEN_EXPIRATION` | Override `cache.token_expiration` (seconds). |
+| `KAFKA_MAP_CACHE_MAX_TOKENS` | Override `cache.max_tokens`. |
+| `DEFAULT_CLUSTER_NAME` / `KAFKA_MAP_BOOTSTRAP_NAME` | Name of a cluster to auto-create at startup. |
+| `DEFAULT_CLUSTER_SERVERS` / `KAFKA_MAP_BOOTSTRAP_SERVERS` | Comma-separated broker list for the bootstrap cluster. |
+| `DEFAULT_CLUSTER_SECURITY_PROTOCOL` / `KAFKA_MAP_BOOTSTRAP_SECURITY_PROTOCOL` | Optional security protocol (defaults to `PLAINTEXT`). |
+| `DEFAULT_CLUSTER_SASL_MECHANISM` / `KAFKA_MAP_BOOTSTRAP_SASL_MECHANISM` | Optional SASL mechanism. |
+| `DEFAULT_CLUSTER_SASL_USERNAME` / `KAFKA_MAP_BOOTSTRAP_SASL_USERNAME` | SASL username (if required). |
+| `DEFAULT_CLUSTER_SASL_PASSWORD` / `KAFKA_MAP_BOOTSTRAP_SASL_PASSWORD` | SASL password (if required). |
+| `DEFAULT_CLUSTER_AUTH_USERNAME` / `KAFKA_MAP_BOOTSTRAP_AUTH_USERNAME` | Alias for SASL username. |
+| `DEFAULT_CLUSTER_AUTH_PASSWORD` / `KAFKA_MAP_BOOTSTRAP_AUTH_PASSWORD` | Alias for SASL password. |
+
+Example of injecting a default admin and a bootstrap cluster:
+
+```bash
+export DEFAULT_USERNAME=ops
+export DEFAULT_PASSWORD=supersecret
+export DEFAULT_CLUSTER_NAME=prod-kafka
+export DEFAULT_CLUSTER_SERVERS="kafka-1:9092,kafka-2:9092"
+export DEFAULT_CLUSTER_SECURITY_PROTOCOL=PLAINTEXT
+```
+
+Each cluster entry accepts `name`, `servers`, `securityProtocol`, `saslMechanism`, `saslUsername`, and `saslPassword` (or the aliases `authUsername`/`authPassword`). During startup the server validates the connection info and inserts any missing clusters into SQLite, so you can fully provision environments without manual UI steps.
+
 ## Default Credentials
 
 - **Username**: admin

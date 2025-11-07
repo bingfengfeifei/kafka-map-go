@@ -59,6 +59,15 @@ func (r *ClusterRepository) Update(cluster *model.Cluster) error {
 	return r.db.Save(cluster).Error
 }
 
+func (r *ClusterRepository) FindByName(name string) (*model.Cluster, error) {
+	var cluster model.Cluster
+	err := r.db.Where("name = ?", name).First(&cluster).Error
+	if err != nil {
+		return nil, err
+	}
+	return &cluster, nil
+}
+
 func (r *ClusterRepository) Delete(id uint) error {
 	return r.db.Delete(&model.Cluster{}, id).Error
 }
