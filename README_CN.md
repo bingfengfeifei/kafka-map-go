@@ -4,6 +4,11 @@
 
 一个用 Go 语言编写的 Kafka 可视化和管理工具，从原始的 Java Spring Boot 版本转换而来。
 
+**核心优势：**
+- **单一二进制** - 无需任何依赖，开箱即用
+- **体积小巧** - 二进制文件小于 10MB，内嵌前端资源
+- **快速部署** - 下载即可运行，无需安装配置
+
 ## 功能特性
 
 - **多集群管理** - 添加、删除和管理多个 Kafka 集群
@@ -40,15 +45,11 @@
 ### 使用 Make
 
 ```bash
-# 安装依赖并构建
-make install-deps
+# 构建应用程序（包含前端构建）
 make build
 
-# 运行应用程序
-make run
-
-# 或以开发模式运行
-make dev
+# 构建 ARM64 版本
+make build-arm
 ```
 
 ### 手动构建
@@ -77,7 +78,10 @@ go build -o kafka-map-go ./cmd/server
 ### 使用 Docker
 
 ```bash
-# 构建 Docker 镜像
+# 构建 Docker 镜像（可选指定版本）
+make docker VERSION=1.0.0
+
+# 或直接使用 docker 命令
 docker build -t kafka-map-go:latest .
 
 # 运行容器
@@ -212,22 +216,10 @@ kafka-map-go/
 
 ## 开发
 
-### 运行测试
-
-```bash
-make test
-```
-
 ### 代码格式化
 
 ```bash
 make fmt
-```
-
-### 代码检查
-
-```bash
-make lint
 ```
 
 ### 清理构建产物
@@ -271,8 +263,8 @@ make clean
 ## 生产环境构建
 
 ```bash
-# 构建优化的二进制文件
-make build-prod
+# 构建优化的二进制文件（包含 UPX 压缩）
+make build
 
 # 二进制文件将创建为 'kafka-map-go'
 # 与 config 目录一起部署并运行

@@ -4,6 +4,11 @@ English | [简体中文](README_CN.md)
 
 A Kafka visualization and management tool written in Go, converted from the original Java Spring Boot version.
 
+**Key Advantages:**
+- **Single Binary** - No dependencies required, runs standalone
+- **Lightweight** - Binary size < 10MB with embedded frontend
+- **Fast Deployment** - Just download and run, no installation needed
+
 ## Features
 
 - **Multi-cluster Management** - Add, remove, and manage multiple Kafka clusters
@@ -40,15 +45,11 @@ A Kafka visualization and management tool written in Go, converted from the orig
 ### Using Make
 
 ```bash
-# Install dependencies and build
-make install-deps
+# Build the application (includes frontend build)
 make build
 
-# Run the application
-make run
-
-# Or run in development mode
-make dev
+# Build for ARM64
+make build-arm
 ```
 
 ### Manual Build
@@ -77,7 +78,10 @@ go build -o kafka-map-go ./cmd/server
 ### Using Docker
 
 ```bash
-# Build Docker image
+# Build Docker image (optionally specify version)
+make docker VERSION=1.0.0
+
+# Or use docker directly
 docker build -t kafka-map-go:latest .
 
 # Run container
@@ -212,22 +216,10 @@ kafka-map-go/
 
 ## Development
 
-### Running Tests
-
-```bash
-make test
-```
-
 ### Code Formatting
 
 ```bash
 make fmt
-```
-
-### Linting
-
-```bash
-make lint
 ```
 
 ### Cleaning Build Artifacts
@@ -271,8 +263,8 @@ make clean
 ## Building for Production
 
 ```bash
-# Build optimized binary
-make build-prod
+# Build optimized binary (with UPX compression)
+make build
 
 # The binary will be created as 'kafka-map-go'
 # Deploy with config directory and run
