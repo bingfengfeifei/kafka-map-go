@@ -30,7 +30,7 @@ const BrokerConfig = ({clusterId, brokerId}) => {
 
     const isEditing = (record) => record.name === editingName;
 
-    let queryBrokerConfig = useQuery('get-broker-config',
+    let queryBrokerConfig = useQuery(['get-broker-config', clusterId, brokerId],
         () => {
             return request.get(`/brokers/${brokerId}/configs?clusterId=${clusterId}`)
         }, {
@@ -139,7 +139,7 @@ const BrokerConfig = ({clusterId, brokerId}) => {
                 rowKey='name'
                 loading={queryBrokerConfig.isLoading}
                 bordered
-                dataSource={queryBrokerConfig.data}
+                dataSource={Array.isArray(queryBrokerConfig.data?.data) ? queryBrokerConfig.data.data : []}
                 columns={mergedColumns}
                 rowClassName="editable-row"
                 pagination={false}

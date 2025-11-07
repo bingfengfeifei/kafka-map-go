@@ -61,8 +61,9 @@ class Broker extends Component {
             dataIndex: 'leaderPartitions',
             key: 'leaderPartitions',
             render: (leaderPartitions, record, index) => {
-                return <Tooltip title={leaderPartitions.join('、')}>
-                    <Button type="link" size='small'>{leaderPartitions.length}</Button>
+                const partitions = Array.isArray(leaderPartitions) ? leaderPartitions : [];
+                return <Tooltip title={partitions.length ? partitions.join('、') : '-'}>
+                    <Button type="link" size='small'>{partitions.length}</Button>
                 </Tooltip>;
             }
         }, {
@@ -70,8 +71,9 @@ class Broker extends Component {
             dataIndex: 'followerPartitions',
             key: 'followerPartitions',
             render: (followerPartitions, record, index) => {
-                return <Tooltip title={followerPartitions.join('、')}>
-                    <Button type="link" size='small'>{followerPartitions.length}</Button>
+                const partitions = Array.isArray(followerPartitions) ? followerPartitions : [];
+                return <Tooltip title={partitions.length ? partitions.join('、') : '-'}>
+                    <Button type="link" size='small'>{partitions.length}</Button>
                 </Tooltip>;
             }
         },{

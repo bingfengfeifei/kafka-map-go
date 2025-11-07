@@ -389,7 +389,9 @@ class Topic extends Component {
                                        let topic = this.state.selectedRow['name'];
                                        let clusterId = this.state.clusterId;
 
-                                       await request.post(`/topics/${topic}/partitions?clusterId=${clusterId}&totalCount=${values['totalCount']}`);
+                                       await request.post(`/topics/${topic}/partitions?clusterId=${clusterId}`, {
+                                           count: values['totalCount']
+                                       });
                                        this.form.current.resetFields();
                                        this.setState({
                                            createPartitionVisible: false
