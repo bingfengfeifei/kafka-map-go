@@ -122,7 +122,7 @@ class App extends Component {
                             <div className='km-header'>
                                 <div style={{flex: '1 1 0%'}}>
                                     <Link to={'/'}>
-                                        <span className='km-header-logo'>Kafka Map</span>
+                                        <span className='km-header-logo'>Kafka Map Go</span>
                                     </Link>
                                 </div>
                                 <div className='km-header-right'>
@@ -151,9 +151,9 @@ class App extends Component {
 
                                 <div className='km-header-right'>
                                                 <span className={'km-header-right-item'}>
-                                                    <Tooltip title="star">
+                                                    <Tooltip title="GitHub">
                                                         <Button type="text" style={{color: 'white'}}
-                                                                href='https://github.com/dushixiang/kafka-map'
+                                                                href='https://github.com/bingfengfeifei/kafka-map-go'
                                                                 icon={<GithubOutlined/>}>
 
                                                         </Button>

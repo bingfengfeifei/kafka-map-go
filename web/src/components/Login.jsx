@@ -52,7 +52,7 @@ class Login extends Component {
                  style={{width: this.state.width, height: this.state.height, backgroundColor: '#F0F2F5'}}>
                 <Card className='login-card' title={null}>
                     <div style={{textAlign: "center", margin: '15px auto 30px auto', color: '#1890ff'}}>
-                        <Title level={1}>Kafka Map</Title>
+                        <Title level={1}>Kafka Map Go</Title>
                     </div>
                     <Form onFinish={this.handleSubmit} className="login-form">
                         <Form.Item name='username' rules={[{required: true, message: '请输入登录账号！'}]}>
