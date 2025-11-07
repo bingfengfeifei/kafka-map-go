@@ -10,6 +10,11 @@ build-prod: build-frontend
 	@echo "Building Kafka-Map Go for production..."
 	CGO_ENABLED=0 go build -ldflags="-s -w"  -trimpath  -o kafka-map-go ./cmd/server
 
+# Build optimized binary for Linux ARM64
+build-prod-arm: build-frontend
+	@echo "Building Kafka-Map Go for Linux ARM64..."
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -trimpath -o kafka-map-go-arm64 ./cmd/server
+
 # Run the application
 run: build
 	@echo "Running Kafka-Map Go..."
