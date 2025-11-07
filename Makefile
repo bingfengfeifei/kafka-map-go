@@ -1,4 +1,4 @@
-.PHONY: build build-arm clean build-frontend
+.PHONY: build build-arm clean build-frontend release
 
 # Application version
 VERSION ?= 1.0.0
@@ -36,7 +36,7 @@ clean:
 	@echo "Cleaning..."
 	rm -f kafka-map-go
 	rm -rf data/
-	rm -rf web/dist web/node_modules
+	rm -rf web/dist
 
 # Build frontend
 build-frontend:
@@ -55,3 +55,36 @@ fmt:
 docker:
 	@echo "Building Docker image with version $(VERSION)..."
 	docker build --build-arg APP_VERSION=$(VERSION) -t kafka-map-go:$(VERSION) -t kafka-map-go:latest .
+
+# Create release packages
+release: clean
+	@echo "Creating release packages for version $(VERSION)..."
+
+	# Build AMD64
+	@echo "Building AMD64 binary..."
+	@$(MAKE) build
+	@mkdir -p release/kafka-map-go-v$(VERSION)-linux-amd64
+	@cp kafka-map-go release/kafka-map-go-v$(VERSION)-linux-amd64/
+	@cp -r config release/kafka-map-go-v$(VERSION)-linux-amd64/
+	@cd release && tar -czf kafka-map-go-v$(VERSION)-linux-amd64.tar.gz kafka-map-go-v$(VERSION)-linux-amd64
+	@echo "Created release/kafka-map-go-v$(VERSION)-linux-amd64.tar.gz"
+
+	# Clean binary for ARM64 build
+	@rm -f kafka-map-go
+
+	# Build ARM64
+	@echo "Building ARM64 binary..."
+	@$(MAKE) build-arm
+	@mkdir -p release/kafka-map-go-v$(VERSION)-linux-arm64
+	@cp kafka-map-go release/kafka-map-go-v$(VERSION)-linux-arm64/
+	@cp -r config release/kafka-map-go-v$(VERSION)-linux-arm64/
+	@cd release && tar -czf kafka-map-go-v$(VERSION)-linux-arm64.tar.gz kafka-map-go-v$(VERSION)-linux-arm64
+	@echo "Created release/kafka-map-go-v$(VERSION)-linux-arm64.tar.gz"
+
+	# Cleanup temporary directories
+	@rm -rf release/kafka-map-go-v$(VERSION)-linux-amd64
+	@rm -rf release/kafka-map-go-v$(VERSION)-linux-arm64
+
+	@echo ""
+	@echo "Release packages created successfully:"
+	@ls -lh release/*.tar.gz
