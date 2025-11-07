@@ -266,6 +266,7 @@ This project is converted from the original Java version of Kafka-Map.
 ## Acknowledgments
 
 - Project repository: [Kafka Map Go](https://github.com/bingfengfeifei/kafka-map-go)
+- Original Java version: [Kafka Map](https://github.com/typesafe/kafka-map)
 - Built with [Gin](https://github.com/gin-gonic/gin)
 - Kafka client: [Sarama](https://github.com/IBM/sarama)
 - ORM: [GORM](https://gorm.io)
