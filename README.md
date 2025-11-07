@@ -1,5 +1,7 @@
 # Kafka Map Go
 
+English | [简体中文](README_CN.md)
+
 A Kafka visualization and management tool written in Go, converted from the original Java Spring Boot version.
 
 ## Features
