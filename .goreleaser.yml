@@ -5,11 +5,15 @@ version: 2
 
 before:
   hooks:
-    # Ensure frontend is built (in case workflow didn't do it)
+    # Ensure frontend is built
     - sh -c "cd web && npm install --legacy-peer-deps && npm run build"
     - sh -c "mkdir -p cmd/server/web && cp -rf web/dist/index.html web/dist/assets cmd/server/web/"
+    # Debug: verify files exist
+    - sh -c "ls -la cmd/server/web/ && ls -la cmd/server/web/assets/"
     - go mod tidy
     - go mod download
+    # Test build before goreleaser takes over
+    - sh -c "cd cmd/server && go build -o /dev/null . && echo 'Test build successful'"
 
 builds:
   - id: kafka-map-go
