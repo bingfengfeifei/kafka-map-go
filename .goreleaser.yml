@@ -5,6 +5,9 @@ version: 2
 
 before:
   hooks:
+    # Ensure frontend is built (in case workflow didn't do it)
+    - sh -c "cd web && npm install --legacy-peer-deps && npm run build"
+    - sh -c "mkdir -p cmd/server/web && cp -rf web/dist/index.html web/dist/assets cmd/server/web/"
     - go mod tidy
     - go mod download
 
