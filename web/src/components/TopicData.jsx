@@ -246,9 +246,9 @@ class TopicData extends Component {
                             <Col span={6} key='keyFilter'>
                                 <Form.Item
                                     name={'keyFilter'}
-                                    label={'key'}
+                                    label={'Key'}
                                 >
-                                    <Input allowClear placeholder="filter key"/>
+                                    <Input allowClear placeholder="filter message key"/>
                                 </Form.Item>
 
                             </Col>
@@ -256,9 +256,28 @@ class TopicData extends Component {
                             <Col span={6} key='valueFilter'>
                                 <Form.Item
                                     name={'valueFilter'}
-                                    label={'value'}
+                                    label={'Value'}
                                 >
-                                    <Input allowClear placeholder="filter value"/>
+                                    <Input allowClear placeholder="filter message value"/>
+                                </Form.Item>
+                            </Col>
+
+                            <Col span={6} key='jsonKey'>
+                                <Form.Item
+                                    name={'jsonKey'}
+                                    label={'JSON Key'}
+                                >
+                                    <Input allowClear placeholder="JSON field name"/>
+                                </Form.Item>
+
+                            </Col>
+
+                            <Col span={6} key='jsonValue'>
+                                <Form.Item
+                                    name={'jsonValue'}
+                                    label={'JSON Value'}
+                                >
+                                    <Input allowClear placeholder="field value (fuzzy)"/>
                                 </Form.Item>
                             </Col>
                             <Col span={12} style={{textAlign: 'right'}}>

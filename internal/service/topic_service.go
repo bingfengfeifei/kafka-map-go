@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -609,8 +610,36 @@ func (s *TopicService) UpdateTopicConfigs(clusterID uint, topicName string, conf
 	return nil
 }
 
-// GetMessages retrieves messages from a topic with optional key and value filtering
-func (s *TopicService) GetMessages(clusterID uint, topicName string, partition int32, offset int64, limit int, keyFilter, valueFilter string) ([]dto.MessageRecord, error) {
+// findInJSON recursively searches for a key-value pair in a JSON structure.
+// Returns true if the key exists anywhere in the structure with a value that contains the search string.
+func findInJSON(data interface{}, key, value string) bool {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for k, val := range v {
+			if k == key {
+				// Check if value contains the search string (fuzzy match)
+				valStr := fmt.Sprintf("%v", val)
+				if strings.Contains(valStr, value) {
+					return true
+				}
+			}
+			// Recursively search nested structures
+			if findInJSON(val, key, value) {
+				return true
+			}
+		}
+	case []interface{}:
+		for _, item := range v {
+			if findInJSON(item, key, value) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// GetMessages retrieves messages from a topic with optional filtering
+func (s *TopicService) GetMessages(clusterID uint, topicName string, partition int32, offset int64, limit int, keyFilter, valueFilter, jsonKey, jsonValue string) ([]dto.MessageRecord, error) {
 	cluster, err := s.clusterRepo.FindByID(clusterID)
 	if err != nil {
 		return nil, err
@@ -635,6 +664,9 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 		maxScan = 1000
 	}
 	scanned := 0
+
+	// Check if JSON filtering is enabled (both key and value must be provided)
+	jsonFilterEnabled := jsonKey != "" && jsonValue != ""
 
 	var (
 		messages    []dto.MessageRecord
@@ -665,14 +697,30 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 			keyStr := string(msg.Key)
 			valueStr := string(msg.Value)
 
-			// Apply filters if specified
+			// Apply key filter (message key contains)
 			if keyFilter != "" && !strings.Contains(keyStr, keyFilter) {
 				resetTimer(idleWait)
 				continue
 			}
+
+			// Apply value filter (message value contains)
 			if valueFilter != "" && !strings.Contains(valueStr, valueFilter) {
 				resetTimer(idleWait)
 				continue
+			}
+
+			// Apply JSON field filter
+			if jsonFilterEnabled {
+				var jsonData interface{}
+				if err := json.Unmarshal(msg.Value, &jsonData); err != nil {
+					// Not valid JSON, skip this message
+					resetTimer(idleWait)
+					continue
+				}
+				if !findInJSON(jsonData, jsonKey, jsonValue) {
+					resetTimer(idleWait)
+					continue
+				}
 			}
 
 			headers := make(map[string]string, len(msg.Headers))

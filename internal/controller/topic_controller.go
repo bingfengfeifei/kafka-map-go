@@ -391,8 +391,10 @@ func (c *TopicController) GetMessages(ctx *gin.Context) {
 
 	keyFilter := ctx.Query("keyFilter")
 	valueFilter := ctx.Query("valueFilter")
+	jsonKey := ctx.Query("jsonKey")
+	jsonValue := ctx.Query("jsonValue")
 
-	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, int32(partition), offset, limit, keyFilter, valueFilter)
+	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, int32(partition), offset, limit, keyFilter, valueFilter, jsonKey, jsonValue)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,
