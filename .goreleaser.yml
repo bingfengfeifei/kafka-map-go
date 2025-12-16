@@ -1,0 +1,113 @@
+# GoReleaser configuration for kafka-map-go
+# Documentation: https://goreleaser.com
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go mod download
+
+builds:
+  - id: kafka-map-go
+    main: ./cmd/server
+    binary: kafka-map-go
+
+    goos:
+      - linux
+
+    goarch:
+      - amd64
+      - arm64
+
+    ldflags:
+      - -s -w
+      - -X main.version={{.Tag}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+    env:
+      - CGO_ENABLED=0
+
+    flags:
+      - -trimpath
+
+archives:
+  - id: kafka-map-go-archive
+    format: tar.gz
+
+    name_template: >-
+      {{ .ProjectName }}-
+      {{- .Version }}-linux-
+      {{- if eq .Arch "amd64" }}amd64
+      {{- else }}{{ .Arch }}{{ end }}
+
+    files:
+      - config/**/*
+      - README*.md
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - 'merge conflict'
+      - Merge pull request
+      - Merge remote-tracking branch
+      - Merge branch
+  groups:
+    - title: 'New Features'
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: 'Bug Fixes'
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: 'Performance Improvements'
+      regexp: '^.*?perf(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: 'Other Changes'
+      order: 999
+
+release:
+  github:
+    owner: bingfengfeifei
+    name: kafka-map-go
+
+  draft: false
+  prerelease: auto
+
+  name_template: "{{.ProjectName}} {{.Version}}"
+
+  footer: |
+    ## Installation
+
+    Download the appropriate binary for your platform from the assets below.
+
+    ### Linux
+    ```bash
+    # Extract the archive
+    tar -xzf kafka-map-go-*-linux-amd64.tar.gz
+
+    # Run
+    cd kafka-map-go-*
+    ./kafka-map-go
+    ```
+
+    ### Docker
+    ```bash
+    docker pull ghcr.io/bingfengfeifei/kafka-map-go:{{.Version}}
+    ```
+
+    ---
+
+    **Full Changelog**: https://github.com/bingfengfeifei/kafka-map-go/compare/{{ .PreviousTag }}...{{ .Tag }}
