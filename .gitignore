@@ -5,7 +5,7 @@
 *.so
 *.dylib
 kafka-map-go
-server
+/server
 
 # Test binary
 *.test
