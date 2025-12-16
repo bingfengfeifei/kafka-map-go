@@ -54,7 +54,7 @@ fmt:
 # Build Docker image
 docker:
 	@echo "Building Docker image with version $(VERSION)..."
-	docker build --build-arg APP_VERSION=$(VERSION) -t kafka-map-go:$(VERSION) -t kafka-map-go:latest .
+	docker build --build-arg APP_VERSION=$(VERSION) --network host -t kafka-map-go:$(VERSION) -t kafka-map-go:latest .
 
 # Create release packages
 release: clean

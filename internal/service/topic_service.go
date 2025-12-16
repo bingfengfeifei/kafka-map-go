@@ -609,8 +609,8 @@ func (s *TopicService) UpdateTopicConfigs(clusterID uint, topicName string, conf
 	return nil
 }
 
-// GetMessages retrieves messages from a topic
-func (s *TopicService) GetMessages(clusterID uint, topicName string, partition int32, offset int64, limit int) ([]dto.MessageRecord, error) {
+// GetMessages retrieves messages from a topic with optional key and value filtering
+func (s *TopicService) GetMessages(clusterID uint, topicName string, partition int32, offset int64, limit int, keyFilter, valueFilter string) ([]dto.MessageRecord, error) {
 	cluster, err := s.clusterRepo.FindByID(clusterID)
 	if err != nil {
 		return nil, err
@@ -627,6 +627,14 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 		return nil, fmt.Errorf("failed to consume partition: %w", err)
 	}
 	defer partitionConsumer.Close()
+
+	// When filters are applied, we need to read more messages to find enough matches
+	// Set a maximum number of messages to scan to avoid infinite loops
+	maxScan := limit * 100
+	if maxScan < 1000 {
+		maxScan = 1000
+	}
+	scanned := 0
 
 	var (
 		messages    []dto.MessageRecord
@@ -646,12 +654,27 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 		timer.Reset(d)
 	}
 
-	for len(messages) < limit {
+	for len(messages) < limit && scanned < maxScan {
 		select {
 		case msg, ok := <-partitionConsumer.Messages():
 			if !ok {
 				return messages, nil
 			}
+			scanned++
+
+			keyStr := string(msg.Key)
+			valueStr := string(msg.Value)
+
+			// Apply filters if specified
+			if keyFilter != "" && !strings.Contains(keyStr, keyFilter) {
+				resetTimer(idleWait)
+				continue
+			}
+			if valueFilter != "" && !strings.Contains(valueStr, valueFilter) {
+				resetTimer(idleWait)
+				continue
+			}
+
 			headers := make(map[string]string, len(msg.Headers))
 			for _, header := range msg.Headers {
 				headers[string(header.Key)] = string(header.Value)
@@ -659,8 +682,8 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 			messages = append(messages, dto.MessageRecord{
 				Partition: msg.Partition,
 				Offset:    msg.Offset,
-				Key:       string(msg.Key),
-				Value:     string(msg.Value),
+				Key:       keyStr,
+				Value:     valueStr,
 				Timestamp: msg.Timestamp.UnixMilli(),
 				Headers:   headers,
 			})

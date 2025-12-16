@@ -380,12 +380,19 @@ func (c *TopicController) GetMessages(ctx *gin.Context) {
 		offset = -1 // Latest
 	}
 
+	// Support both "limit" and "count" parameter names (frontend uses "count")
 	limit, err := strconv.Atoi(ctx.Query("limit"))
 	if err != nil || limit <= 0 {
-		limit = 100
+		limit, err = strconv.Atoi(ctx.Query("count"))
+		if err != nil || limit <= 0 {
+			limit = 100
+		}
 	}
 
-	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, int32(partition), offset, limit)
+	keyFilter := ctx.Query("keyFilter")
+	valueFilter := ctx.Query("valueFilter")
+
+	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, int32(partition), offset, limit, keyFilter, valueFilter)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,

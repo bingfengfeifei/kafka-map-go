@@ -99,7 +99,17 @@ class TopicDataLive extends Component {
         eventSource.addEventListener("topic-message-event", (event) => {
             let liveMessage = JSON.parse(event.data);
             let items = this.state.items.slice();
-            items.push(...liveMessage['messages']);
+            // Auto-expand JSON by default
+            let newMessages = liveMessage['messages'].map(msg => {
+                try {
+                    let obj = JSON.parse(msg['value']);
+                    msg['format'] = JSON.stringify(obj, null, 4);
+                } catch (e) {
+                    // Not valid JSON, keep as is
+                }
+                return msg;
+            });
+            items.push(...newMessages);
             if (items.length > 100) {
                 items = items.slice(-100);
             }

@@ -104,6 +104,15 @@ class TopicData extends Component {
             let paramsStr = qs.stringify(queryParams);
             let response = await request.get(`/topics/${this.state.topic}/data?${paramsStr}`);
             let result = response && Array.isArray(response.data) ? response.data : [];
+            // Auto-expand JSON by default
+            result.forEach(item => {
+                try {
+                    let obj = JSON.parse(item['value']);
+                    item['format'] = JSON.stringify(obj, null, 4);
+                } catch (e) {
+                    // Not valid JSON, keep as is
+                }
+            });
             this.setState({
                 items: result
             })
