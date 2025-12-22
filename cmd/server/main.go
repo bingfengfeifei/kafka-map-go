@@ -45,10 +45,15 @@ func main() {
 
 	// Initialize services
 	userService := service.NewUserService(userRepo)
+	topicStatsRepo := repository.NewTopicStatsRepository(db)
 	brokerService := service.NewBrokerService(clusterRepo, kafkaManager)
-	topicService := service.NewTopicService(clusterRepo, kafkaManager)
+	topicService := service.NewTopicService(clusterRepo, topicStatsRepo, kafkaManager)
 	consumerGroupService := service.NewConsumerGroupService(clusterRepo, kafkaManager)
 	clusterService := service.NewClusterService(clusterRepo, kafkaManager, topicService, brokerService, consumerGroupService)
+
+	// Start topic stats background task (refresh every 1 minute)
+	topicStatsTask := service.NewTopicStatsTask(clusterRepo, topicStatsRepo, kafkaManager, 1*time.Minute)
+	topicStatsTask.Start()
 
 	// Bootstrap clusters provided via configuration/environment variables
 	if len(config.GlobalConfig.BootstrapClusters) > 0 {
@@ -56,6 +61,14 @@ func main() {
 			log.Fatalf("Failed to bootstrap clusters: %v", err)
 		}
 	}
+
+	// Refresh stats immediately after clusters are ready
+	log.Println("[Main] Refreshing topic stats for all clusters...")
+	topicStatsTask.RefreshAllSync()
+	log.Println("[Main] Topic stats refresh complete")
+
+	// Now start the background task for periodic refresh
+	// The task is already started, subsequent refreshes will happen every minute
 
 	// Initialize default user
 	if err := userService.InitUser(); err != nil {

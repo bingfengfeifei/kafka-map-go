@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"sort"
 	"strconv"
@@ -18,20 +19,22 @@ import (
 )
 
 type TopicService struct {
-	clusterRepo  *repository.ClusterRepository
-	kafkaManager *util.KafkaClientManager
+	clusterRepo     *repository.ClusterRepository
+	topicStatsRepo  *repository.TopicStatsRepository
+	kafkaManager    *util.KafkaClientManager
 }
 
-func NewTopicService(clusterRepo *repository.ClusterRepository, kafkaManager *util.KafkaClientManager) *TopicService {
+func NewTopicService(clusterRepo *repository.ClusterRepository, topicStatsRepo *repository.TopicStatsRepository, kafkaManager *util.KafkaClientManager) *TopicService {
 	return &TopicService{
-		clusterRepo:  clusterRepo,
-		kafkaManager: kafkaManager,
+		clusterRepo:    clusterRepo,
+		topicStatsRepo: topicStatsRepo,
+		kafkaManager:   kafkaManager,
 	}
 }
 
 // GetTopics retrieves all topics for a cluster with optional fuzzy filtering by name.
 func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummary, error) {
-	cluster, admin, err := s.getClusterAndAdmin(clusterID)
+	_, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +89,15 @@ func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummar
 
 	clusterIDStr := strconv.FormatUint(uint64(clusterID), 10)
 
+	// Get cached stats from database
+	cachedStats, _ := s.topicStatsRepo.FindByCluster(clusterID)
+	log.Printf("[TopicService] GetTopics: found %d cached stats for cluster %d", len(cachedStats), clusterID)
+	cachedStatsMap := make(map[string]model.TopicStats, len(cachedStats))
+	for i := range cachedStats {
+		cachedStatsMap[cachedStats[i].Name] = cachedStats[i]
+		log.Printf("[TopicService] Cached: %s -> messages=%d", cachedStats[i].Name, cachedStats[i].TotalMessages)
+	}
+
 	summaries := make([]dto.TopicSummary, 0, len(metadata))
 	for _, md := range metadata {
 		if md == nil || md.Err != sarama.ErrNoError {
@@ -100,30 +112,13 @@ func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummar
 			size = v
 		}
 
-		// Calculate total messages and last timestamp for each topic
+		// Get cached stats
 		var totalMessages int64
 		var lastTimestamp int64
-		client, err := s.kafkaManager.CreateClient(cluster)
-		if err != nil {
-			continue
+		if cached, ok := cachedStatsMap[md.Name]; ok {
+			totalMessages = cached.TotalMessages
+			lastTimestamp = cached.LastTimestamp
 		}
-		for _, partition := range md.Partitions {
-			// Get the newest offset for this partition
-			newestOffset, err := client.GetOffset(md.Name, partition.ID, sarama.OffsetNewest)
-			if err != nil {
-				continue
-			}
-			// Get the oldest offset for this partition
-			oldestOffset, err := client.GetOffset(md.Name, partition.ID, sarama.OffsetOldest)
-			if err != nil {
-				continue
-			}
-			totalMessages += newestOffset - oldestOffset
-			if newestOffset > oldestOffset {
-				lastTimestamp = int64(time.Now().UnixMilli())
-			}
-		}
-		client.Close()
 
 		summaries = append(summaries, dto.TopicSummary{
 			ClusterID:        clusterIDStr,
