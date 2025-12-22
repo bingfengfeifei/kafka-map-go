@@ -15,6 +15,9 @@ import {
 } from "antd";
 import request from "../common/request";
 import qs from "qs";
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+dayjs.extend(relativeTime);
 import {
     PlusOutlined,
     SyncOutlined,
@@ -43,7 +46,7 @@ class Topic extends Component {
         items: [],
         queryParams: {
             pageIndex: 1,
-            pageSize: 10,
+            pageSize: 20,
             name: ''
         },
         loading: false,
@@ -183,7 +186,7 @@ class Topic extends Component {
                 key: 'name',
                 defaultSortOrder: 'ascend',
                 sorter: (a, b) => a.name.localeCompare(b.name),
-                width: window.innerWidth * 0.3,
+                width: window.innerWidth * 0.2,
                 render: (name, record, index) => {
                     return <Link to={`/topic-info?clusterId=${record['clusterId']}&topic=${name}`}>
                         {name}
@@ -227,6 +230,23 @@ class Topic extends Component {
                     } else {
                         return renderSize(totalLogSize);
                     }
+                }
+            }, {
+                title: <FormattedMessage id="total-messages"/>,
+                dataIndex: 'totalMessages',
+                key: 'totalMessages',
+                sorter: (a, b) => a['totalMessages'] - b['totalMessages'],
+                render: (totalMessages) => totalMessages.toLocaleString()
+            }, {
+                title: <FormattedMessage id="last-update"/>,
+                dataIndex: 'lastTimestamp',
+                key: 'lastTimestamp',
+                sorter: (a, b) => a['lastTimestamp'] - b['lastTimestamp'],
+                render: (timestamp) => {
+                    if (!timestamp || timestamp <= 0) {
+                        return '-';
+                    }
+                    return dayjs(timestamp).fromNow();
                 }
             },
                 {
@@ -319,7 +339,7 @@ class Topic extends Component {
                                             })
                                             this.loadTableData({
                                                 pageIndex: 1,
-                                                pageSize: 10,
+                                                pageSize: 20,
                                                 clusterId: this.state.clusterId,
                                                 name: ''
                                             })
@@ -358,6 +378,7 @@ class Topic extends Component {
                         size={'middle'}
                         loading={this.state.loading}
                         pagination={{
+                            defaultPageSize: 20,
                             showSizeChanger: true,
                             total: this.state.items.length,
                             showTotal: total => <FormattedMessage id="total-items" values={{total}}/>

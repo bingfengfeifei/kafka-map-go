@@ -23,6 +23,7 @@ import {Input} from "antd/lib/index";
 import {FormattedMessage} from "react-intl";
 import withRouter from "../hook/withRouter.jsx";
 import {PageHeader} from "@ant-design/pro-components";
+import {Empty} from "antd";
 
 const {Text} = Typography;
 
@@ -301,6 +302,9 @@ class TopicData extends Component {
                         itemLayout="horizontal"
                         dataSource={this.state.items}
                         loading={this.state.loading}
+                        locale={{
+                            emptyText: <Empty description={<FormattedMessage id="no-messages"/>}/>
+                        }}
                         pagination={{
                             showSizeChanger: true,
                             total: this.state.items.length,

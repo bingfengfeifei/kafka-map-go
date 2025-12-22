@@ -31,7 +31,7 @@ func NewTopicService(clusterRepo *repository.ClusterRepository, kafkaManager *ut
 
 // GetTopics retrieves all topics for a cluster with optional fuzzy filtering by name.
 func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummary, error) {
-	_, admin, err := s.getClusterAndAdmin(clusterID)
+	cluster, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
@@ -100,12 +100,39 @@ func (s *TopicService) GetTopics(clusterID uint, name string) ([]dto.TopicSummar
 			size = v
 		}
 
+		// Calculate total messages and last timestamp for each topic
+		var totalMessages int64
+		var lastTimestamp int64
+		client, err := s.kafkaManager.CreateClient(cluster)
+		if err != nil {
+			continue
+		}
+		for _, partition := range md.Partitions {
+			// Get the newest offset for this partition
+			newestOffset, err := client.GetOffset(md.Name, partition.ID, sarama.OffsetNewest)
+			if err != nil {
+				continue
+			}
+			// Get the oldest offset for this partition
+			oldestOffset, err := client.GetOffset(md.Name, partition.ID, sarama.OffsetOldest)
+			if err != nil {
+				continue
+			}
+			totalMessages += newestOffset - oldestOffset
+			if newestOffset > oldestOffset {
+				lastTimestamp = int64(time.Now().UnixMilli())
+			}
+		}
+		client.Close()
+
 		summaries = append(summaries, dto.TopicSummary{
 			ClusterID:        clusterIDStr,
 			Name:             md.Name,
 			PartitionsCount:  len(md.Partitions),
 			ReplicaCount:     replicaCount,
 			TotalLogSize:     size,
+			TotalMessages:    totalMessages,
+			LastTimestamp:    lastTimestamp,
 			ConsumerGroupCnt: 0, // can be enriched later; UI currently does not use this field
 		})
 	}

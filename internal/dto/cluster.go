@@ -52,6 +52,8 @@ type TopicSummary struct {
 	PartitionsCount  int    `json:"partitionsCount"`
 	ReplicaCount     int    `json:"replicaCount"`
 	TotalLogSize     int64  `json:"totalLogSize"`
+	TotalMessages    int64  `json:"totalMessages"`   // Total messages in the topic
+	LastTimestamp    int64  `json:"lastTimestamp"`   // Latest message timestamp (Unix millis)
 	ConsumerGroupCnt int    `json:"consumerGroupCount"`
 }
 
