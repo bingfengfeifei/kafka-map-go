@@ -712,6 +712,10 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 		select {
 		case msg, ok := <-partitionConsumer.Messages():
 			if !ok {
+				// 按 timestamp 降序排序，确保最新的消息在最前面
+				sort.Slice(messages, func(i, j int) bool {
+					return messages[i].Timestamp > messages[j].Timestamp
+				})
 				return messages, nil
 			}
 			scanned++
@@ -759,14 +763,27 @@ func (s *TopicService) GetMessages(clusterID uint, topicName string, partition i
 			})
 
 			if len(messages) >= limit {
+				// 按 timestamp 降序排序，确保最新的消息在最前面
+				sort.Slice(messages, func(i, j int) bool {
+					return messages[i].Timestamp > messages[j].Timestamp
+				})
 				return messages, nil
 			}
 
 			resetTimer(idleWait)
 		case <-timer.C:
+			// 按 timestamp 降序排序，确保最新的消息在最前面
+			sort.Slice(messages, func(i, j int) bool {
+				return messages[i].Timestamp > messages[j].Timestamp
+			})
 			return messages, nil
 		}
 	}
+
+	// 按 timestamp 降序排序，确保最新的消息在最前面
+	sort.Slice(messages, func(i, j int) bool {
+		return messages[i].Timestamp > messages[j].Timestamp
+	})
 
 	return messages, nil
 }
