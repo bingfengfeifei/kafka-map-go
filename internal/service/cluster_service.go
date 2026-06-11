@@ -161,12 +161,6 @@ func (s *ClusterService) BootstrapClusters(clusters []config.BootstrapClusterCon
 }
 
 func (s *ClusterService) ensureClusterExists(bootstrap config.BootstrapClusterConfig) error {
-	if _, err := s.clusterRepo.FindByName(bootstrap.Name); err == nil {
-		return nil
-	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-		return err
-	}
-
 	cluster := &model.Cluster{
 		Name:             bootstrap.Name,
 		Servers:          bootstrap.Servers,
@@ -176,7 +170,17 @@ func (s *ClusterService) ensureClusterExists(bootstrap config.BootstrapClusterCo
 		SaslPassword:     firstNonEmpty(bootstrap.SaslPassword, bootstrap.AuthPassword),
 	}
 
-	return s.Create(cluster)
+	if err := normalizeCluster(cluster); err != nil {
+		return err
+	}
+
+	if _, err := s.clusterRepo.FindByName(cluster.Name); err == nil {
+		return nil
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return err
+	}
+
+	return s.clusterRepo.Create(cluster)
 }
 
 func firstNonEmpty(values ...string) string {
@@ -206,6 +210,10 @@ func normalizeCluster(cluster *model.Cluster) error {
 		cluster.SecurityProtocol = "PLAINTEXT"
 	}
 
+	if len(brokerAddresses(cluster.Servers)) == 0 {
+		return fmt.Errorf("at least one broker server is required")
+	}
+
 	switch cluster.SecurityProtocol {
 	case "PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL":
 	default:
@@ -231,13 +239,13 @@ func normalizeCluster(cluster *model.Cluster) error {
 
 // validateConnection validates cluster connection
 func (s *ClusterService) validateConnection(cluster *model.Cluster) error {
-	brokers := strings.Split(cluster.Servers, ",")
+	brokers := brokerAddresses(cluster.Servers)
 	if len(brokers) == 0 {
 		return fmt.Errorf("no brokers specified")
 	}
 
 	// Test network connectivity to first broker
-	broker := strings.TrimSpace(brokers[0])
+	broker := brokers[0]
 	conn, err := net.DialTimeout("tcp", broker, 5*time.Second)
 	if err != nil {
 		return fmt.Errorf("failed to connect to broker %s: %w", broker, err)
@@ -245,4 +253,15 @@ func (s *ClusterService) validateConnection(cluster *model.Cluster) error {
 	conn.Close()
 
 	return nil
+}
+
+func brokerAddresses(servers string) []string {
+	parts := strings.Split(servers, ",")
+	brokers := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if broker := strings.TrimSpace(part); broker != "" {
+			brokers = append(brokers, broker)
+		}
+	}
+	return brokers
 }
