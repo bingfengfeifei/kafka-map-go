@@ -103,7 +103,7 @@ class ConsumerGroup extends Component {
     handleSearchByName = value => {
         let query = {
             ...this.state.queryParams,
-            'groupId': value,
+            'name': value,
         }
 
         this.loadTableData(query);

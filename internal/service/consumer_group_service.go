@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/IBM/sarama"
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
@@ -23,11 +24,14 @@ func NewConsumerGroupService(clusterRepo *repository.ClusterRepository, kafkaMan
 	}
 }
 
-func (s *ConsumerGroupService) GetConsumerGroups(clusterID uint) ([]dto.ConsumerGroupInfo, error) {
+func (s *ConsumerGroupService) GetConsumerGroups(clusterID uint, name string) ([]dto.ConsumerGroupInfo, error) {
 	cluster, admin, err := s.getClusterAndAdmin(clusterID)
 	if err != nil {
 		return nil, err
 	}
+
+	name = strings.TrimSpace(name)
+	nameLower := strings.ToLower(name)
 
 	groupMap, err := admin.ListConsumerGroups()
 	if err != nil {
@@ -45,6 +49,10 @@ func (s *ConsumerGroupService) GetConsumerGroups(clusterID uint) ([]dto.Consumer
 
 	infos := make([]dto.ConsumerGroupInfo, 0, len(groupMap))
 	for groupID := range groupMap {
+		if nameLower != "" && !strings.Contains(strings.ToLower(groupID), nameLower) {
+			continue
+		}
+
 		describe, err := admin.DescribeConsumerGroups([]string{groupID})
 		if err != nil || len(describe) == 0 {
 			continue

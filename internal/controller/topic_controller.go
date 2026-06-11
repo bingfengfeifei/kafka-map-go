@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -15,6 +16,53 @@ type TopicController struct {
 
 func NewTopicController(topicService *service.TopicService) *TopicController {
 	return &TopicController{topicService: topicService}
+}
+
+var errInvalidClusterID = errors.New("invalid cluster ID")
+
+func parseClusterIDString(value string) (uint, error) {
+	if value == "" {
+		return 0, errInvalidClusterID
+	}
+	parsed, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(parsed), nil
+}
+
+func parseClusterIDValue(value any) (uint, error) {
+	switch v := value.(type) {
+	case nil:
+		return 0, errInvalidClusterID
+	case string:
+		return parseClusterIDString(v)
+	case float64:
+		const maxUint32 = 1<<32 - 1
+		if v < 0 || v > maxUint32 || v != float64(uint32(v)) {
+			return 0, errInvalidClusterID
+		}
+		return uint(v), nil
+	default:
+		return 0, errInvalidClusterID
+	}
+}
+
+func parseCreateTopicClusterID(ctx *gin.Context, req *dto.CreateTopicRequest) (uint, error) {
+	if clusterID := ctx.Query("clusterId"); clusterID != "" {
+		return parseClusterIDString(clusterID)
+	}
+	return parseClusterIDValue(req.ClusterID)
+}
+
+func normalizeCreateTopicRequest(req *dto.CreateTopicRequest) error {
+	if req.Partitions == 0 {
+		req.Partitions = req.NumPartitions
+	}
+	if req.Partitions < 1 {
+		return errors.New("partitions must be at least 1")
+	}
+	return nil
 }
 
 // GetTopics retrieves all topics for a cluster
@@ -189,15 +237,6 @@ func (c *TopicController) GetTopicConsumerGroups(ctx *gin.Context) {
 
 // CreateTopic creates a new topic
 func (c *TopicController) CreateTopic(ctx *gin.Context) {
-	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
-	if err != nil {
-		ctx.JSON(http.StatusBadRequest, dto.Response{
-			Code:    http.StatusBadRequest,
-			Message: "Invalid cluster ID",
-		})
-		return
-	}
-
 	var req dto.CreateTopicRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
@@ -207,7 +246,24 @@ func (c *TopicController) CreateTopic(ctx *gin.Context) {
 		return
 	}
 
-	if err := c.topicService.CreateTopic(uint(clusterID), &req); err != nil {
+	if err := normalizeCreateTopicRequest(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	clusterID, err := parseCreateTopicClusterID(ctx, &req)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	if err := c.topicService.CreateTopic(clusterID, &req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
 			Message: "Failed to create topic: " + err.Error(),

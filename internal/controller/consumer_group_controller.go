@@ -28,7 +28,12 @@ func (c *ConsumerGroupController) GetConsumerGroups(ctx *gin.Context) {
 		return
 	}
 
-	groups, err := c.consumerGroupService.GetConsumerGroups(uint(clusterID))
+	name := ctx.Query("name")
+	if name == "" {
+		name = ctx.Query("groupId")
+	}
+
+	groups, err := c.consumerGroupService.GetConsumerGroups(uint(clusterID), name)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,

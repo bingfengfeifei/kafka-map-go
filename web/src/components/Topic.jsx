@@ -131,9 +131,14 @@ class Topic extends Component {
             if (formData.id) {
 
             } else {
-                formData['clusterId'] = this.state.clusterId;
+                const requestData = {
+                    ...formData,
+                    partitions: formData.numPartitions,
+                };
+                delete requestData.numPartitions;
+
                 // 向后台提交数据
-                await request.post('/topics', formData);
+                await request.post('/topics?' + qs.stringify({clusterId: this.state.clusterId}), requestData);
                 message.success('success', 3);
                 this.setState({
                     modalVisible: false

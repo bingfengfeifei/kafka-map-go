@@ -52,8 +52,8 @@ type TopicSummary struct {
 	PartitionsCount  int    `json:"partitionsCount"`
 	ReplicaCount     int    `json:"replicaCount"`
 	TotalLogSize     int64  `json:"totalLogSize"`
-	TotalMessages    int64  `json:"totalMessages"`   // Total messages in the topic
-	LastTimestamp    int64  `json:"lastTimestamp"`   // Latest message timestamp (Unix millis)
+	TotalMessages    int64  `json:"totalMessages"` // Total messages in the topic
+	LastTimestamp    int64  `json:"lastTimestamp"` // Latest message timestamp (Unix millis)
 	ConsumerGroupCnt int    `json:"consumerGroupCount"`
 }
 
@@ -103,9 +103,11 @@ type TopicConfig struct {
 // CreateTopicRequest represents topic creation request
 type CreateTopicRequest struct {
 	Name              string            `json:"name" binding:"required"`
-	Partitions        int32             `json:"partitions" binding:"required,min=1"`
+	Partitions        int32             `json:"partitions"`
+	NumPartitions     int32             `json:"numPartitions"`
 	ReplicationFactor int16             `json:"replicationFactor" binding:"required,min=1"`
 	Configs           map[string]string `json:"configs"`
+	ClusterID         any               `json:"clusterId"`
 }
 
 // TopicConsumerGroup represents aggregated lag information for a consumer group on a topic.
