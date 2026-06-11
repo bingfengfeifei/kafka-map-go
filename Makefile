@@ -1,3 +1,6 @@
+FRONTEND_BASE_PATH ?= /
+FRONTEND_API_BASE ?=
+
 .PHONY: build build-arm clean build-frontend release
 
 # Application version
@@ -41,7 +44,8 @@ clean:
 # Build frontend
 build-frontend:
 	@echo "Building frontend..."
-	cd web && npm install --legacy-peer-deps && npm run build
+	@echo "Frontend base path: $(FRONTEND_BASE_PATH)"
+	cd web && npm install --legacy-peer-deps && VITE_BASE_PATH="$(FRONTEND_BASE_PATH)" VITE_API_BASE="$(FRONTEND_API_BASE)" npm run build
 	mkdir -p cmd/server/web
 	rm -rf cmd/server/web/assets
 	cp -rf web/dist/index.html web/dist/assets cmd/server/web/

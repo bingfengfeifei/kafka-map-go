@@ -2,6 +2,7 @@ import React, {Component} from 'react';
 import {Button, Card, Form, Input, Typography} from "antd";
 import './Login.css'
 import request from "../common/request";
+import {appBasePath} from "../common/env";
 import {LockOutlined, UserOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
@@ -34,7 +35,7 @@ class Login extends Component {
             if (result.code === 200 && result.data && result.data.token) {
                 localStorage.setItem('X-Auth-Token', result.data.token);
                 // 跳转到首页
-                window.location.href = "/"
+                window.location.href = appBasePath
             }
         } catch (error) {
             console.error('Login failed:', error);
