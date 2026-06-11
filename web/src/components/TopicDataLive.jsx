@@ -78,6 +78,10 @@ class TopicDataLive extends Component {
     }
 
     pullMessage = async (queryParams) => {
+        if (this.state.eventSource) {
+            this.state.eventSource.close();
+        }
+
         this.setState({
             loading: true
         })
@@ -94,7 +98,16 @@ class TopicDataLive extends Component {
 
         eventSource.onopen = (e) => {
             console.log("SSE connected!");
+            this.setState({
+                loading: false
+            });
         };
+
+        eventSource.addEventListener("connected", () => {
+            this.setState({
+                loading: false
+            });
+        });
 
         eventSource.addEventListener("topic-message-event", (event) => {
             let liveMessage = JSON.parse(event.data);
@@ -137,6 +150,10 @@ class TopicDataLive extends Component {
         eventSource.onerror = (error) => {
             console.log("SSE error", error);
             eventSource.close();
+            this.setState({
+                eventSource: undefined,
+                loading: false,
+            });
         };
 
         this.setState({
@@ -253,7 +270,7 @@ class TopicDataLive extends Component {
                                         <FormattedMessage id="pull"/>
                                     </Button>
 
-                                    <Button type="default" onClick={this.handleStopPull} disabled={!this.state.loading}>
+                                    <Button type="default" onClick={this.handleStopPull} disabled={!this.state.eventSource}>
                                         <FormattedMessage id="stop"/>
                                     </Button>
 

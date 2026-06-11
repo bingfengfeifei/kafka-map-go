@@ -127,6 +127,7 @@ func main() {
 			protected.POST("/topics/:topic/partitions", topicController.ExpandPartitions)
 			protected.GET("/topics/:topic/configs", topicController.GetTopicConfigs)
 			protected.PUT("/topics/:topic/configs", topicController.UpdateTopicConfigs)
+			protected.GET("/topics/:topic/data/live", topicController.GetMessagesLive)
 			protected.GET("/topics/:topic/data", topicController.GetMessages)
 			protected.POST("/topics/:topic/data", topicController.SendMessage)
 
@@ -180,6 +181,7 @@ func main() {
 			protected.POST("/topics/:topic/partitions", topicController.ExpandPartitions)
 			protected.GET("/topics/:topic/configs", topicController.GetTopicConfigs)
 			protected.PUT("/topics/:topic/configs", topicController.UpdateTopicConfigs)
+			protected.GET("/topics/:topic/data/live", topicController.GetMessagesLive)
 			protected.GET("/topics/:topic/data", topicController.GetMessages)
 			protected.POST("/topics/:topic/data", topicController.SendMessage)
 

@@ -17,8 +17,12 @@ func AuthMiddleware(tokenCache *util.TokenCache) gin.HandlerFunc {
 			return
 		}
 
-		// Get token from header
+		// EventSource cannot send custom headers, so live streaming endpoints pass
+		// the same token as a query parameter.
 		token := ctx.GetHeader("X-Auth-Token")
+		if token == "" {
+			token = ctx.Query("X-Auth-Token")
+		}
 		if token == "" {
 			ctx.JSON(http.StatusUnauthorized, dto.Response{
 				Code:    http.StatusUnauthorized,

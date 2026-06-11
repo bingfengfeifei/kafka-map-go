@@ -19,9 +19,9 @@ import (
 )
 
 type TopicService struct {
-	clusterRepo     *repository.ClusterRepository
-	topicStatsRepo  *repository.TopicStatsRepository
-	kafkaManager    *util.KafkaClientManager
+	clusterRepo    *repository.ClusterRepository
+	topicStatsRepo *repository.TopicStatsRepository
+	kafkaManager   *util.KafkaClientManager
 }
 
 func NewTopicService(clusterRepo *repository.ClusterRepository, topicStatsRepo *repository.TopicStatsRepository, kafkaManager *util.KafkaClientManager) *TopicService {
@@ -252,6 +252,32 @@ func (s *TopicService) GetTopicDetail(clusterID uint, topicName string) (*dto.To
 		TotalLogSize: size,
 		Partitions:   partitions,
 	}, nil
+}
+
+// GetPartitionOffsets returns the beginning and end offsets for a topic partition.
+func (s *TopicService) GetPartitionOffsets(clusterID uint, topicName string, partition int32) (int64, int64, error) {
+	cluster, err := s.clusterRepo.FindByID(clusterID)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	client, err := s.kafkaManager.CreateClient(cluster)
+	if err != nil {
+		return -1, -1, err
+	}
+	defer client.Close()
+
+	beginning, err := client.GetOffset(topicName, partition, sarama.OffsetOldest)
+	if err != nil {
+		return -1, -1, err
+	}
+
+	end, err := client.GetOffset(topicName, partition, sarama.OffsetNewest)
+	if err != nil {
+		return beginning, -1, err
+	}
+
+	return beginning, end, nil
 }
 
 // GetTopicPartitions returns detailed partition information for a topic.

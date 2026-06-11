@@ -24,8 +24,8 @@
   "devDependencies": {
     "@types/react": "^18.0.24",
     "@types/react-dom": "^18.0.8",
-    "@vitejs/plugin-react": "^2.2.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "react-intl": "^5.17.2",
-    "vite": "^3.2.3"
+    "vite": "^8.0.16"
   }
 }

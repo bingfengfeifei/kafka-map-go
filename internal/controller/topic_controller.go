@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
 	"github.com/bingfengfeifei/kafka-map-go/internal/service"
@@ -12,6 +13,16 @@ import (
 
 type TopicController struct {
 	topicService *service.TopicService
+}
+
+type messageQuery struct {
+	partition   int32
+	offset      int64
+	limit       int
+	keyFilter   string
+	valueFilter string
+	jsonKey     string
+	jsonValue   string
 }
 
 func NewTopicController(topicService *service.TopicService) *TopicController {
@@ -63,6 +74,36 @@ func normalizeCreateTopicRequest(req *dto.CreateTopicRequest) error {
 		return errors.New("partitions must be at least 1")
 	}
 	return nil
+}
+
+func parseMessageQuery(ctx *gin.Context, defaultLimit int) messageQuery {
+	partition, err := strconv.ParseInt(ctx.Query("partition"), 10, 32)
+	if err != nil {
+		partition = 0
+	}
+
+	offset, err := strconv.ParseInt(ctx.Query("offset"), 10, 64)
+	if err != nil {
+		offset = -1
+	}
+
+	limit, err := strconv.Atoi(ctx.Query("limit"))
+	if err != nil || limit <= 0 {
+		limit, err = strconv.Atoi(ctx.Query("count"))
+		if err != nil || limit <= 0 {
+			limit = defaultLimit
+		}
+	}
+
+	return messageQuery{
+		partition:   int32(partition),
+		offset:      offset,
+		limit:       limit,
+		keyFilter:   ctx.Query("keyFilter"),
+		valueFilter: ctx.Query("valueFilter"),
+		jsonKey:     ctx.Query("jsonKey"),
+		jsonValue:   ctx.Query("jsonValue"),
+	}
 }
 
 // GetTopics retrieves all topics for a cluster
@@ -425,32 +466,9 @@ func (c *TopicController) GetMessages(ctx *gin.Context) {
 	}
 
 	topicName := ctx.Param("topic")
+	query := parseMessageQuery(ctx, 100)
 
-	partition, err := strconv.ParseInt(ctx.Query("partition"), 10, 32)
-	if err != nil {
-		partition = 0
-	}
-
-	offset, err := strconv.ParseInt(ctx.Query("offset"), 10, 64)
-	if err != nil {
-		offset = -1 // Latest
-	}
-
-	// Support both "limit" and "count" parameter names (frontend uses "count")
-	limit, err := strconv.Atoi(ctx.Query("limit"))
-	if err != nil || limit <= 0 {
-		limit, err = strconv.Atoi(ctx.Query("count"))
-		if err != nil || limit <= 0 {
-			limit = 100
-		}
-	}
-
-	keyFilter := ctx.Query("keyFilter")
-	valueFilter := ctx.Query("valueFilter")
-	jsonKey := ctx.Query("jsonKey")
-	jsonValue := ctx.Query("jsonValue")
-
-	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, int32(partition), offset, limit, keyFilter, valueFilter, jsonKey, jsonValue)
+	messages, err := c.topicService.GetMessages(uint(clusterID), topicName, query.partition, query.offset, query.limit, query.keyFilter, query.valueFilter, query.jsonKey, query.jsonValue)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
 			Code:    http.StatusInternalServerError,
@@ -464,6 +482,88 @@ func (c *TopicController) GetMessages(ctx *gin.Context) {
 		Message: "Success",
 		Data:    messages,
 	})
+}
+
+// GetMessagesLive streams newly consumed messages from a topic partition.
+func (c *TopicController) GetMessagesLive(ctx *gin.Context) {
+	clusterID, err := strconv.ParseUint(ctx.Query("clusterId"), 10, 32)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid cluster ID",
+		})
+		return
+	}
+
+	topicName := ctx.Param("topic")
+	query := parseMessageQuery(ctx, 20)
+
+	ctx.Writer.Header().Set("Content-Type", "text/event-stream")
+	ctx.Writer.Header().Set("Cache-Control", "no-cache")
+	ctx.Writer.Header().Set("Connection", "keep-alive")
+	ctx.Writer.Header().Set("X-Accel-Buffering", "no")
+
+	flusher, ok := ctx.Writer.(http.Flusher)
+	if !ok {
+		ctx.JSON(http.StatusInternalServerError, dto.Response{
+			Code:    http.StatusInternalServerError,
+			Message: "Streaming unsupported",
+		})
+		return
+	}
+
+	sendEvent := func(name string, data any) {
+		ctx.SSEvent(name, data)
+		flusher.Flush()
+	}
+
+	currentOffset := query.offset
+	sendEvent("connected", gin.H{"status": "connected"})
+
+	for {
+		select {
+		case <-ctx.Request.Context().Done():
+			return
+		default:
+		}
+
+		messages, err := c.topicService.GetMessages(uint(clusterID), topicName, query.partition, currentOffset, query.limit, query.keyFilter, query.valueFilter, query.jsonKey, query.jsonValue)
+		if err != nil {
+			sendEvent("error", gin.H{"message": "Failed to retrieve messages: " + err.Error()})
+			return
+		}
+
+		beginningOffset, endOffset, err := c.topicService.GetPartitionOffsets(uint(clusterID), topicName, query.partition)
+		if err != nil {
+			beginningOffset = -1
+			endOffset = -1
+		}
+
+		if len(messages) == 0 {
+			sendEvent("ping", gin.H{
+				"partition":       query.partition,
+				"beginningOffset": beginningOffset,
+				"endOffset":       endOffset,
+				"timestamp":       time.Now().UnixMilli(),
+			})
+			continue
+		}
+
+		maxOffset := currentOffset
+		for _, message := range messages {
+			if message.Offset >= maxOffset {
+				maxOffset = message.Offset + 1
+			}
+		}
+		currentOffset = maxOffset
+
+		sendEvent("topic-message-event", gin.H{
+			"partition":       query.partition,
+			"beginningOffset": beginningOffset,
+			"endOffset":       endOffset,
+			"messages":        messages,
+		})
+	}
 }
 
 // SendMessage sends a message to a topic
