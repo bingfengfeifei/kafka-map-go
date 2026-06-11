@@ -34,7 +34,7 @@ func (m *KafkaClientManager) GetAdminClient(cluster *model.Cluster) (sarama.Clus
 
 	// Create new admin client
 	config := m.buildConfig(cluster)
-	brokers := strings.Split(cluster.Servers, ",")
+	brokers := brokerList(cluster.Servers)
 
 	admin, err := sarama.NewClusterAdmin(brokers, config)
 	if err != nil {
@@ -63,7 +63,7 @@ func (m *KafkaClientManager) RemoveAdminClient(clusterID uint) error {
 // CreateConsumer creates a new Kafka consumer
 func (m *KafkaClientManager) CreateConsumer(cluster *model.Cluster) (sarama.Consumer, error) {
 	config := m.buildConfig(cluster)
-	brokers := strings.Split(cluster.Servers, ",")
+	brokers := brokerList(cluster.Servers)
 
 	consumer, err := sarama.NewConsumer(brokers, config)
 	if err != nil {
@@ -75,7 +75,7 @@ func (m *KafkaClientManager) CreateConsumer(cluster *model.Cluster) (sarama.Cons
 // CreateClient creates a new Kafka client
 func (m *KafkaClientManager) CreateClient(cluster *model.Cluster) (sarama.Client, error) {
 	config := m.buildConfig(cluster)
-	brokers := strings.Split(cluster.Servers, ",")
+	brokers := brokerList(cluster.Servers)
 
 	client, err := sarama.NewClient(brokers, config)
 	if err != nil {
@@ -90,7 +90,7 @@ func (m *KafkaClientManager) CreateProducer(cluster *model.Cluster) (sarama.Sync
 	config.Producer.Return.Successes = true
 	config.Producer.RequiredAcks = sarama.WaitForAll
 
-	brokers := strings.Split(cluster.Servers, ",")
+	brokers := brokerList(cluster.Servers)
 
 	producer, err := sarama.NewSyncProducer(brokers, config)
 	if err != nil {
@@ -105,7 +105,7 @@ func (m *KafkaClientManager) buildConfig(cluster *model.Cluster) *sarama.Config 
 	config.Version = sarama.V3_4_0_0
 
 	// Security protocol configuration
-	switch cluster.SecurityProtocol {
+	switch strings.ToUpper(strings.TrimSpace(cluster.SecurityProtocol)) {
 	case "SASL_PLAINTEXT":
 		config.Net.SASL.Enable = true
 		m.configureSASL(config, cluster)
@@ -133,8 +133,8 @@ func (m *KafkaClientManager) configureSASL(config *sarama.Config, cluster *model
 	config.Net.SASL.User = cluster.SaslUsername
 	config.Net.SASL.Password = cluster.SaslPassword
 
-	switch cluster.SaslMechanism {
-	case "PLAIN":
+	switch strings.ToUpper(strings.TrimSpace(cluster.SaslMechanism)) {
+	case "", "PLAIN":
 		config.Net.SASL.Mechanism = sarama.SASLTypePlaintext
 	case "SCRAM-SHA-256":
 		config.Net.SASL.Mechanism = sarama.SASLTypeSCRAMSHA256
@@ -147,6 +147,17 @@ func (m *KafkaClientManager) configureSASL(config *sarama.Config, cluster *model
 			return &XDGSCRAMClient{HashGeneratorFcn: scram.SHA512}
 		}
 	}
+}
+
+func brokerList(servers string) []string {
+	parts := strings.Split(servers, ",")
+	brokers := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if broker := strings.TrimSpace(part); broker != "" {
+			brokers = append(brokers, broker)
+		}
+	}
+	return brokers
 }
 
 // CloseAll closes all cached admin clients

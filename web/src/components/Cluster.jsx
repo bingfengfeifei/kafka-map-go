@@ -171,7 +171,7 @@ class Cluster extends Component {
         try {
             if (formData.id) {
                 // 向后台提交数据
-                await request.put('/clusters/' + formData.id, {'name': formData['name']});
+                await request.put('/clusters/' + formData.id, formData);
                 message.success('success', 3);
                 this.setState({
                     modalVisible: false
@@ -200,7 +200,7 @@ class Cluster extends Component {
         })
         try {
             let result = await request.delete('/clusters/' + this.state.selectedRowKeys.join(','));
-            if (result.code === 1) {
+            if (result.code === 200) {
                 message.success('success', 3);
                 this.setState({
                     selectedRowKeys: []

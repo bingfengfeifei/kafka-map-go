@@ -1,4 +1,4 @@
-FRONTEND_BASE_PATH ?= /
+FRONTEND_BASE_PATH ?= ./
 FRONTEND_API_BASE ?=
 
 .PHONY: build build-arm clean build-frontend release

@@ -16,7 +16,7 @@ type Cluster struct {
 	SecurityProtocol string         `json:"securityProtocol"`        // PLAINTEXT, SASL_PLAINTEXT, SASL_SSL, SSL
 	SaslMechanism    string         `json:"saslMechanism"`           // PLAIN, SCRAM-SHA-256, SCRAM-SHA-512
 	SaslUsername     string         `json:"saslUsername"`
-	SaslPassword     string         `json:"saslPassword"`
+	SaslPassword     string         `json:"-"`
 }
 
 func (Cluster) TableName() string {

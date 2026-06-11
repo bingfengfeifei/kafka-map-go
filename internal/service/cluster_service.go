@@ -35,9 +35,8 @@ func NewClusterService(clusterRepo *repository.ClusterRepository, kafkaManager *
 
 // Create creates a new cluster
 func (s *ClusterService) Create(cluster *model.Cluster) error {
-	// Set default security protocol if not provided
-	if cluster.SecurityProtocol == "" {
-		cluster.SecurityProtocol = "PLAINTEXT"
+	if err := normalizeCluster(cluster); err != nil {
+		return err
 	}
 
 	// Validate connection
@@ -50,9 +49,8 @@ func (s *ClusterService) Create(cluster *model.Cluster) error {
 
 // Update updates an existing cluster
 func (s *ClusterService) Update(cluster *model.Cluster) error {
-	// Set default security protocol if not provided
-	if cluster.SecurityProtocol == "" {
-		cluster.SecurityProtocol = "PLAINTEXT"
+	if err := normalizeCluster(cluster); err != nil {
+		return err
 	}
 
 	// Validate connection
@@ -195,6 +193,40 @@ func valueOrDefault(v, def string) string {
 		return def
 	}
 	return v
+}
+
+func normalizeCluster(cluster *model.Cluster) error {
+	cluster.Name = strings.TrimSpace(cluster.Name)
+	cluster.Servers = strings.TrimSpace(cluster.Servers)
+	cluster.SecurityProtocol = strings.ToUpper(strings.TrimSpace(cluster.SecurityProtocol))
+	cluster.SaslMechanism = strings.ToUpper(strings.TrimSpace(cluster.SaslMechanism))
+	cluster.SaslUsername = strings.TrimSpace(cluster.SaslUsername)
+
+	if cluster.SecurityProtocol == "" {
+		cluster.SecurityProtocol = "PLAINTEXT"
+	}
+
+	switch cluster.SecurityProtocol {
+	case "PLAINTEXT", "SSL", "SASL_PLAINTEXT", "SASL_SSL":
+	default:
+		return fmt.Errorf("unsupported securityProtocol %q", cluster.SecurityProtocol)
+	}
+
+	if cluster.SecurityProtocol == "SASL_PLAINTEXT" || cluster.SecurityProtocol == "SASL_SSL" {
+		if cluster.SaslMechanism == "" {
+			cluster.SaslMechanism = "PLAIN"
+		}
+		switch cluster.SaslMechanism {
+		case "PLAIN", "SCRAM-SHA-256", "SCRAM-SHA-512":
+		default:
+			return fmt.Errorf("unsupported saslMechanism %q", cluster.SaslMechanism)
+		}
+		if cluster.SaslUsername == "" || cluster.SaslPassword == "" {
+			return fmt.Errorf("saslUsername and saslPassword are required for %s", cluster.SecurityProtocol)
+		}
+	}
+
+	return nil
 }
 
 // validateConnection validates cluster connection

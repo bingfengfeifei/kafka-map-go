@@ -70,20 +70,18 @@ const ClusterModal = ({title, handleOk, handleCancel, confirmLoading, model}) =>
 
                 <Form.Item label={<FormattedMessage id="sasl-mechanism"/>} name='saslMechanism'>
                     <Select allowClear>
-                        <Select.Option value="GSSAPI">GSSAPI</Select.Option>
                         <Select.Option value="PLAIN">PLAIN</Select.Option>
-                        <Select.Option value="OAUTHBEARER">OAUTHBEARER</Select.Option>
                         <Select.Option value="SCRAM-SHA-256">SCRAM-SHA-256</Select.Option>
                         <Select.Option value="SCRAM-SHA-512">SCRAM-SHA-512</Select.Option>
                     </Select>
                 </Form.Item>
 
-                <Form.Item label={<FormattedMessage id="username"/>} name='authUsername'>
+                <Form.Item label={<FormattedMessage id="username"/>} name='saslUsername'>
                     <Input placeholder="" maxLength={200}/>
                 </Form.Item>
 
-                <Form.Item label={<FormattedMessage id="password"/>} name='authPassword'>
-                    <Input placeholder="" maxLength={200}/>
+                <Form.Item label={<FormattedMessage id="password"/>} name='saslPassword'>
+                    <Input.Password placeholder="" maxLength={200}/>
                 </Form.Item>
             </Form>
         </Modal>

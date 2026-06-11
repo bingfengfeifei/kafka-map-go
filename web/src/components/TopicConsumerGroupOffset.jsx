@@ -31,7 +31,7 @@ class TopicConsumerGroupOffset extends Component {
         groupId: undefined,
         resetOffsetVisible: false,
         selectedRow: {},
-        seek: 'end',
+        resetType: 'end',
         resetting: false
     }
 
@@ -188,7 +188,11 @@ class TopicConsumerGroupOffset extends Component {
                                             let groupId = this.state.groupId;
                                             let clusterId = this.state.clusterId;
 
-                                            await request.put(`/topics/${topic}/consumerGroups/${groupId}/offset?clusterId=${clusterId}`, values);
+                                            const params = {
+                                                ...values,
+                                                type: values.type === 'custom' ? 'offset' : values.type,
+                                            };
+                                            await request.put(`/topics/${topic}/consumerGroups/${groupId}/offset?clusterId=${clusterId}`, params);
                                             this.form.current.resetFields();
                                             this.setState({
                                                 resetOffsetVisible: false
@@ -207,12 +211,12 @@ class TopicConsumerGroupOffset extends Component {
                     <Alert message={<FormattedMessage id="reset-warning" />} description={<FormattedMessage id="reset-warning-description" />} type="warning" showIcon
                            style={{marginBottom: 16}}/>
 
-                    <Form ref={this.form}>
-                        <Form.Item label={<FormattedMessage id="reset-partition" />} name='seek' rules={[{required: true}]}>
+                    <Form ref={this.form} initialValues={{type: 'end'}}>
+                        <Form.Item label={<FormattedMessage id="reset-partition" />} name='type' rules={[{required: true}]}>
                             <Radio.Group onChange={(e) => {
-                                let seek = e.target.value;
+                                let resetType = e.target.value;
                                 this.setState({
-                                    'seek': seek
+                                    resetType: resetType
                                 })
                             }}>
                                 <Radio value={'end'}><FormattedMessage id="latest" /></Radio>
@@ -222,7 +226,7 @@ class TopicConsumerGroupOffset extends Component {
                         </Form.Item>
 
                         {
-                            this.state.seek === 'custom' ?
+                            this.state.resetType === 'custom' ?
                                 <Form.Item label="offset" name='offset' rules={[{required: true}]}>
                                     <InputNumber min={0}/>
                                 </Form.Item> : undefined

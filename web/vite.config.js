@@ -2,7 +2,11 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 function normalizeBasePath(basePath) {
-  if (!basePath || basePath === '/') {
+  if (!basePath) {
+    return './'
+  }
+
+  if (basePath === '/') {
     return '/'
   }
 

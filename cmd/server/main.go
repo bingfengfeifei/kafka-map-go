@@ -2,9 +2,12 @@ package main
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/bingfengfeifei/kafka-map-go/internal/config"
@@ -87,6 +90,35 @@ func main() {
 
 	// Apply CORS middleware
 	router.Use(middleware.CORSMiddleware())
+
+	router.GET("/runtime-config.js", func(c *gin.Context) {
+		configuredBasePath := firstNonEmpty(
+			os.Getenv("KAFKA_MAP_BASE_PATH"),
+			c.GetHeader("X-Forwarded-Prefix"),
+		)
+		basePath := normalizeRuntimePath(configuredBasePath)
+		apiBase := normalizeRuntimePath(os.Getenv("KAFKA_MAP_API_BASE"))
+		if apiBase == "" && basePath != "" {
+			apiBase = joinRuntimePath(basePath, "api")
+		}
+
+		runtimeConfig := gin.H{}
+		if basePath != "" {
+			runtimeConfig["basePath"] = basePath
+		}
+		if apiBase != "" {
+			runtimeConfig["apiBase"] = apiBase
+		}
+
+		payload, err := json.Marshal(runtimeConfig)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "Failed to build runtime config")
+			return
+		}
+
+		c.Header("Cache-Control", "no-store")
+		c.Data(http.StatusOK, "application/javascript; charset=utf-8", []byte("window.__KAFKA_MAP_CONFIG__ = "+string(payload)+";\n"))
+	})
 
 	// API routes with /api prefix
 	api := router.Group("/api")
@@ -261,4 +293,44 @@ func main() {
 	if err := router.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func normalizeRuntimeBasePath(basePath string) string {
+	value := normalizeRuntimePath(basePath)
+	if value == "" {
+		return "/"
+	}
+	return value
+}
+
+func normalizeRuntimePath(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	if value == "/" {
+		return "/"
+	}
+	if !strings.HasPrefix(value, "/") {
+		value = "/" + value
+	}
+	return strings.TrimRight(value, "/")
+}
+
+func joinRuntimePath(basePath, pathPart string) string {
+	basePath = normalizeRuntimeBasePath(basePath)
+	pathPart = strings.Trim(pathPart, "/")
+	if basePath == "/" {
+		return "/" + pathPart
+	}
+	return basePath + "/" + pathPart
 }

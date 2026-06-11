@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
 	"github.com/bingfengfeifei/kafka-map-go/internal/model"
@@ -14,7 +15,7 @@ type ClusterController struct {
 	clusterService *service.ClusterService
 }
 
-type updateClusterRequest struct {
+type clusterRequest struct {
 	Name             *string `json:"name"`
 	Servers          *string `json:"servers"`
 	SecurityProtocol *string `json:"securityProtocol"`
@@ -111,11 +112,21 @@ func (c *ClusterController) GetCluster(ctx *gin.Context) {
 
 // CreateCluster creates a new cluster
 func (c *ClusterController) CreateCluster(ctx *gin.Context) {
-	var cluster model.Cluster
-	if err := ctx.ShouldBindJSON(&cluster); err != nil {
+	var req clusterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
 			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
+
+	cluster := model.Cluster{}
+	req.applyTo(&cluster)
+	if strings.TrimSpace(cluster.Name) == "" || strings.TrimSpace(cluster.Servers) == "" {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Cluster name and servers are required",
 		})
 		return
 	}
@@ -146,7 +157,7 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 		return
 	}
 
-	var req updateClusterRequest
+	var req clusterRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
@@ -155,9 +166,7 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 		return
 	}
 
-	if req.Name == nil && req.Servers == nil && req.SecurityProtocol == nil &&
-		req.SaslMechanism == nil && req.SaslUsername == nil && req.SaslPassword == nil &&
-		req.AuthUsername == nil && req.AuthPassword == nil {
+	if !req.hasChanges() {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
 			Message: "No fields to update",
@@ -174,30 +183,7 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 		return
 	}
 
-	if req.Name != nil {
-		cluster.Name = *req.Name
-	}
-	if req.Servers != nil {
-		cluster.Servers = *req.Servers
-	}
-	if req.SecurityProtocol != nil {
-		cluster.SecurityProtocol = *req.SecurityProtocol
-	}
-	if req.SaslMechanism != nil {
-		cluster.SaslMechanism = *req.SaslMechanism
-	}
-	if req.SaslUsername != nil {
-		cluster.SaslUsername = *req.SaslUsername
-	}
-	if req.SaslPassword != nil {
-		cluster.SaslPassword = *req.SaslPassword
-	}
-	if req.AuthUsername != nil {
-		cluster.SaslUsername = *req.AuthUsername
-	}
-	if req.AuthPassword != nil {
-		cluster.SaslPassword = *req.AuthPassword
-	}
+	req.applyTo(cluster)
 
 	if err := c.clusterService.Update(cluster); err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
@@ -214,27 +200,82 @@ func (c *ClusterController) UpdateCluster(ctx *gin.Context) {
 	})
 }
 
+func (r clusterRequest) hasChanges() bool {
+	return r.Name != nil || r.Servers != nil || r.SecurityProtocol != nil ||
+		r.SaslMechanism != nil || r.SaslUsername != nil || r.SaslPassword != nil ||
+		r.AuthUsername != nil || r.AuthPassword != nil
+}
+
+func (r clusterRequest) applyTo(cluster *model.Cluster) {
+	if r.Name != nil {
+		cluster.Name = strings.TrimSpace(*r.Name)
+	}
+	if r.Servers != nil {
+		cluster.Servers = strings.TrimSpace(*r.Servers)
+	}
+	if r.SecurityProtocol != nil {
+		cluster.SecurityProtocol = strings.TrimSpace(*r.SecurityProtocol)
+	}
+	if r.SaslMechanism != nil {
+		cluster.SaslMechanism = strings.TrimSpace(*r.SaslMechanism)
+	}
+	if r.SaslUsername != nil {
+		cluster.SaslUsername = strings.TrimSpace(*r.SaslUsername)
+	}
+	if r.SaslPassword != nil {
+		cluster.SaslPassword = *r.SaslPassword
+	}
+	if r.AuthUsername != nil {
+		cluster.SaslUsername = strings.TrimSpace(*r.AuthUsername)
+	}
+	if r.AuthPassword != nil {
+		cluster.SaslPassword = *r.AuthPassword
+	}
+}
+
 // DeleteCluster deletes a cluster
 func (c *ClusterController) DeleteCluster(ctx *gin.Context) {
-	id, err := strconv.ParseUint(ctx.Param("id"), 10, 32)
+	ids, err := parseClusterIDs(ctx.Param("id"))
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, dto.Response{
 			Code:    http.StatusBadRequest,
-			Message: "Invalid cluster ID",
+			Message: "Invalid cluster ID: " + err.Error(),
 		})
 		return
 	}
 
-	if err := c.clusterService.Delete(uint(id)); err != nil {
-		ctx.JSON(http.StatusInternalServerError, dto.Response{
-			Code:    http.StatusInternalServerError,
-			Message: "Failed to delete cluster: " + err.Error(),
-		})
-		return
+	for _, id := range ids {
+		if err := c.clusterService.Delete(id); err != nil {
+			ctx.JSON(http.StatusInternalServerError, dto.Response{
+				Code:    http.StatusInternalServerError,
+				Message: "Failed to delete cluster: " + err.Error(),
+			})
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusOK, dto.Response{
 		Code:    http.StatusOK,
 		Message: "Cluster deleted successfully",
 	})
+}
+
+func parseClusterIDs(value string) ([]uint, error) {
+	parts := strings.Split(value, ",")
+	ids := make([]uint, 0, len(parts))
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		id, err := strconv.ParseUint(part, 10, 32)
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, uint(id))
+	}
+	if len(ids) == 0 {
+		return nil, strconv.ErrSyntax
+	}
+	return ids, nil
 }

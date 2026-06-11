@@ -1,8 +1,10 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/bingfengfeifei/kafka-map-go/internal/dto"
 	"github.com/bingfengfeifei/kafka-map-go/internal/service"
@@ -215,6 +217,13 @@ func (c *ConsumerGroupController) ResetConsumerGroupOffset(ctx *gin.Context) {
 		})
 		return
 	}
+	if err := normalizeOffsetResetRequest(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, dto.Response{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid request: " + err.Error(),
+		})
+		return
+	}
 
 	if err := c.consumerGroupService.ResetConsumerGroupOffset(uint(clusterID), topicName, groupID, &req); err != nil {
 		ctx.JSON(http.StatusInternalServerError, dto.Response{
@@ -228,4 +237,22 @@ func (c *ConsumerGroupController) ResetConsumerGroupOffset(ctx *gin.Context) {
 		Code:    http.StatusOK,
 		Message: "Consumer group offset reset successfully",
 	})
+}
+
+func normalizeOffsetResetRequest(req *dto.OffsetResetRequest) error {
+	resetType := strings.TrimSpace(req.Type)
+	if resetType == "" {
+		resetType = strings.TrimSpace(req.Seek)
+	}
+	if resetType == "custom" {
+		resetType = "offset"
+	}
+
+	switch resetType {
+	case "beginning", "end", "offset":
+		req.Type = resetType
+		return nil
+	default:
+		return fmt.Errorf("unsupported type %q", resetType)
+	}
 }

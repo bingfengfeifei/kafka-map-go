@@ -193,6 +193,7 @@ type SendMessageRequest struct {
 
 // OffsetResetRequest represents offset reset request
 type OffsetResetRequest struct {
-	Type   string `json:"type" binding:"required,oneof=beginning end offset"`
+	Type   string `json:"type"`
+	Seek   string `json:"seek"`
 	Offset int64  `json:"offset"`
 }
