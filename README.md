@@ -122,6 +122,7 @@ You can override any of the YAML settings (or provide new defaults) via the foll
 | `KAFKA_MAP_CACHE_MAX_TOKENS` | Override `cache.max_tokens`. |
 | `KAFKA_MAP_AUTH_DISABLED` | Disable authentication entirely (see note below). Accepts `true`/`1`/`yes`/`on`. |
 | `KAFKA_MAP_IFRAME_MODE` | Enable embedded iframe UI mode. Accepts `true`/`1`/`yes`/`on`. |
+| `KAFKA_MAP_DARK_THEME` | Enable the deep-blue dark UI theme for embedded deployments. Accepts `true`/`1`/`yes`/`on`. |
 | `DEFAULT_CLUSTER_NAME` / `KAFKA_MAP_BOOTSTRAP_NAME` | Name of a cluster to auto-create at startup. |
 | `DEFAULT_CLUSTER_SERVERS` / `KAFKA_MAP_BOOTSTRAP_SERVERS` | Comma-separated broker list for the bootstrap cluster. |
 | `DEFAULT_CLUSTER_SECURITY_PROTOCOL` / `KAFKA_MAP_BOOTSTRAP_SECURITY_PROTOCOL` | Optional security protocol (defaults to `PLAINTEXT`). |
@@ -147,6 +148,15 @@ Set `KAFKA_MAP_IFRAME_MODE=true` when embedding Kafka Map Go in another applicat
 
 ```bash
 export KAFKA_MAP_IFRAME_MODE=true
+```
+
+#### Dark Theme
+
+Set `KAFKA_MAP_DARK_THEME=true` to use the deep-blue dark UI theme. It can be combined with iframe mode for embedded deployments.
+
+```bash
+export KAFKA_MAP_IFRAME_MODE=true
+export KAFKA_MAP_DARK_THEME=true
 ```
 
 Example of injecting a default admin and a bootstrap cluster:

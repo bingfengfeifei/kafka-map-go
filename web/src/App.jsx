@@ -13,8 +13,9 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import 'dayjs/locale/zh-cn';
 import {FormattedMessage, IntlProvider} from 'react-intl';
 import request from "./common/request";
-import {authDisabled, iframeMode} from "./common/env";
-import {getInitialLocale} from "./common/runtimeConfig";
+import {authDisabled, darkTheme, iframeMode} from "./common/env";
+import {getInitialLocale, getThemeClassName} from "./common/runtimeConfig";
+import {darkAntDesignTheme} from "./common/theme";
 
 const {Header, Content} = Layout;
 
@@ -34,6 +35,7 @@ class App extends Component {
     }
 
     componentDidMount() {
+        this.syncThemeClass();
         let locale = getInitialLocale({
             iframeMode,
             storedLocale: localStorage.getItem('locale'),
@@ -44,6 +46,18 @@ class App extends Component {
         })
         if (!authDisabled) {
             this.loadUserInfo();
+        }
+    }
+
+    componentWillUnmount() {
+        if (typeof document !== 'undefined') {
+            document.body.classList.remove('km-body-dark');
+        }
+    }
+
+    syncThemeClass = () => {
+        if (typeof document !== 'undefined') {
+            document.body.classList.toggle('km-body-dark', darkTheme);
         }
     }
 
@@ -120,8 +134,11 @@ class App extends Component {
 
         return (
             <IntlProvider locale={this.state.locale} messages={messages[this.state.locale]}>
-                <ConfigProvider locale={this.getAntDesignLocale(this.state.locale)}>
-                    <Layout style={{minHeight: '100vh'}}>
+                <ConfigProvider
+                    locale={this.getAntDesignLocale(this.state.locale)}
+                    theme={darkTheme ? darkAntDesignTheme : undefined}
+                >
+                    <Layout className={getThemeClassName(darkTheme)} style={{minHeight: '100vh'}}>
                         {!iframeMode && (
                             <Header className="header">
                                 <div className='km-header'>

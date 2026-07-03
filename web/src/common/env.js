@@ -70,3 +70,5 @@ export const appBasePath = currentBasePath();
 export const authDisabled = !!runtimeConfig().authDisabled;
 
 export const iframeMode = isRuntimeFlagEnabled(runtimeConfig().iframeMode);
+
+export const darkTheme = isRuntimeFlagEnabled(runtimeConfig().darkTheme);

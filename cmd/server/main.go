@@ -100,6 +100,7 @@ func main() {
 			apiBase:      os.Getenv("KAFKA_MAP_API_BASE"),
 			authDisabled: config.GlobalConfig.Auth.Disabled,
 			iframeMode:   os.Getenv("KAFKA_MAP_IFRAME_MODE"),
+			darkTheme:    os.Getenv("KAFKA_MAP_DARK_THEME"),
 		})
 
 		payload, err := json.Marshal(runtimeConfig)
@@ -301,6 +302,7 @@ type runtimeConfigOptions struct {
 	apiBase      string
 	authDisabled bool
 	iframeMode   string
+	darkTheme    string
 }
 
 func buildRuntimeConfig(options runtimeConfigOptions) gin.H {
@@ -322,6 +324,9 @@ func buildRuntimeConfig(options runtimeConfigOptions) gin.H {
 	}
 	if parseRuntimeBool(options.iframeMode) {
 		runtimeConfig["iframeMode"] = true
+	}
+	if parseRuntimeBool(options.darkTheme) {
+		runtimeConfig["darkTheme"] = true
 	}
 
 	return runtimeConfig

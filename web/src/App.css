@@ -56,3 +56,268 @@
     margin-top: 20px;
     border-radius: 4px;
 }
+
+.km-app {
+    background: #f0f2f5;
+}
+
+body.km-body-dark {
+    --km-dark-bg: #081a2f;
+    --km-dark-panel: rgba(0, 0, 0, 0.3);
+    --km-dark-panel-strong: rgba(0, 0, 0, 0.4);
+    --km-dark-border: rgba(255, 255, 255, 0.12);
+    --km-dark-border-soft: rgba(255, 255, 255, 0.08);
+    --km-dark-text: rgba(255, 255, 255, 0.88);
+    --km-dark-text-muted: rgba(255, 255, 255, 0.64);
+    --km-dark-primary: #597ef7;
+    --km-dark-primary-soft: #86a3ff;
+    background: #081a2f;
+}
+
+.km-app-dark {
+    --km-dark-bg: #081a2f;
+    --km-dark-panel: rgba(0, 0, 0, 0.3);
+    --km-dark-panel-strong: rgba(0, 0, 0, 0.4);
+    --km-dark-border: rgba(255, 255, 255, 0.12);
+    --km-dark-border-soft: rgba(255, 255, 255, 0.08);
+    --km-dark-text: rgba(255, 255, 255, 0.88);
+    --km-dark-text-muted: rgba(255, 255, 255, 0.64);
+    --km-dark-primary: #597ef7;
+    --km-dark-primary-soft: #86a3ff;
+    color: var(--km-dark-text);
+    background:
+        linear-gradient(180deg, #081a2f 0%, #41517a 50%, #3b3c5a 100%),
+        #081a2f;
+}
+
+.km-app-dark .ant-layout {
+    background: transparent;
+}
+
+.km-app-dark .header {
+    background: var(--km-dark-panel);
+    border-bottom: 1px solid var(--km-dark-border);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+}
+
+.km-app-dark .km-header {
+    color: var(--km-dark-text);
+}
+
+.km-app-dark .km-header-logo,
+.km-app-dark .km-header-right-item {
+    color: #ffffff;
+}
+
+.km-app-dark .km-header-right-item:hover {
+    color: var(--km-dark-primary-soft);
+}
+
+.km-app-dark .kd-content,
+.km-app-dark .kd-page-header,
+.km-app-dark .ant-card {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+        var(--km-dark-panel);
+    border: 1px solid var(--km-dark-border);
+    box-shadow: 2px 2px 12px 0 rgba(0, 0, 0, 0.32);
+}
+
+.km-app-dark .kd-page-header {
+    color: var(--km-dark-text);
+}
+
+.km-app-dark .ant-page-header,
+.km-app-dark .ant-page-header-heading-title,
+.km-app-dark .ant-page-header-heading-sub-title,
+.km-app-dark .ant-typography,
+.km-app-dark .ant-statistic-title,
+.km-app-dark .ant-statistic-content,
+.km-app-dark .ant-form-item-label > label {
+    color: var(--km-dark-text);
+}
+
+.km-app-dark .ant-statistic-title,
+.km-app-dark .ant-page-header-heading-sub-title,
+.km-app-dark .ant-typography-secondary {
+    color: var(--km-dark-text-muted) !important;
+}
+
+.km-app-dark .ant-table-wrapper .ant-table,
+.km-app-dark .ant-table-wrapper .ant-table-container,
+.km-app-dark .ant-table-wrapper .ant-table-content,
+.km-app-dark .ant-table-wrapper .ant-table-cell {
+    background: transparent;
+    color: var(--km-dark-text);
+}
+
+.km-app-dark .ant-table-wrapper .ant-table-thead > tr > th {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--km-dark-text);
+    border-bottom: 1px solid var(--km-dark-border);
+}
+
+.km-app-dark .ant-table-wrapper .ant-table-tbody > tr > td {
+    border-bottom: 1px solid var(--km-dark-border-soft);
+}
+
+.km-app-dark .ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td,
+.km-app-dark .ant-table-wrapper .ant-table-tbody > tr > td.ant-table-cell-row-hover {
+    background: rgba(89, 126, 247, 0.16);
+}
+
+.km-app-dark .ant-table-wrapper .ant-table-placeholder {
+    background: transparent;
+}
+
+.km-app-dark .ant-pagination .ant-pagination-item,
+.km-app-dark .ant-pagination .ant-pagination-prev .ant-pagination-item-link,
+.km-app-dark .ant-pagination .ant-pagination-next .ant-pagination-item-link {
+    background: rgba(0, 0, 0, 0.22);
+    border-color: var(--km-dark-border);
+}
+
+.km-app-dark .ant-pagination .ant-pagination-item-active {
+    background: rgba(89, 126, 247, 0.22);
+    border-color: var(--km-dark-primary);
+}
+
+.km-app-dark .ant-input,
+.km-body-dark .ant-input,
+.km-app-dark .ant-input-affix-wrapper,
+.km-body-dark .ant-input-affix-wrapper,
+.km-app-dark .ant-input-number,
+.km-body-dark .ant-input-number,
+.km-app-dark .ant-picker,
+.km-body-dark .ant-picker,
+.km-app-dark .ant-select-selector,
+.km-body-dark .ant-select-selector,
+.km-body-dark .ant-select-dropdown,
+.km-body-dark .ant-picker-dropdown .ant-picker-panel-container {
+    background-color: rgba(0, 0, 0, 0.24) !important;
+    border-color: var(--km-dark-border) !important;
+    color: var(--km-dark-text) !important;
+}
+
+.km-app-dark .ant-input::placeholder,
+.km-body-dark .ant-input::placeholder,
+.km-app-dark .ant-input-number-input::placeholder,
+.km-body-dark .ant-input-number-input::placeholder,
+.km-app-dark .ant-select-selection-placeholder {
+    color: rgba(255, 255, 255, 0.36) !important;
+}
+
+.km-app-dark .ant-input:hover,
+.km-body-dark .ant-input:hover,
+.km-app-dark .ant-input:focus,
+.km-body-dark .ant-input:focus,
+.km-app-dark .ant-input-affix-wrapper:hover,
+.km-body-dark .ant-input-affix-wrapper:hover,
+.km-app-dark .ant-input-affix-wrapper-focused,
+.km-body-dark .ant-input-affix-wrapper-focused,
+.km-app-dark .ant-select-focused .ant-select-selector,
+.km-body-dark .ant-select-focused .ant-select-selector,
+.km-app-dark .ant-picker:hover,
+.km-body-dark .ant-picker:hover,
+.km-app-dark .ant-picker-focused {
+    border-color: var(--km-dark-primary-soft) !important;
+    box-shadow: 0 0 0 2px rgba(89, 126, 247, 0.18) !important;
+}
+
+.km-app-dark .ant-btn-default {
+    background: rgba(0, 0, 0, 0.22);
+    border-color: var(--km-dark-border);
+    color: var(--km-dark-text);
+}
+
+.km-body-dark .ant-btn-default {
+    background: rgba(0, 0, 0, 0.22);
+    border-color: var(--km-dark-border);
+    color: var(--km-dark-text);
+}
+
+.km-body-dark .ant-btn-default:hover {
+    background: rgba(89, 126, 247, 0.18);
+    border-color: var(--km-dark-primary);
+    color: #ffffff;
+}
+
+.km-app-dark .ant-btn-default:hover {
+    background: rgba(89, 126, 247, 0.18);
+    border-color: var(--km-dark-primary);
+    color: #ffffff;
+}
+
+.km-app-dark .ant-tabs-tab {
+    color: var(--km-dark-text-muted);
+}
+
+.km-app-dark .ant-tabs-tab:hover,
+.km-app-dark .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: #ffffff;
+}
+
+.km-app-dark .ant-tabs-ink-bar {
+    background: var(--km-dark-primary);
+}
+
+.km-app-dark .ant-tabs-top > .ant-tabs-nav::before {
+    border-bottom-color: var(--km-dark-border);
+}
+
+.km-app-dark .ant-tag {
+    background: rgba(89, 126, 247, 0.16);
+    border-color: rgba(134, 163, 255, 0.45);
+    color: var(--km-dark-primary-soft);
+}
+
+.km-app-dark .ant-drawer-content,
+.km-app-dark .ant-drawer-header,
+.km-body-dark .ant-modal-content,
+.km-body-dark .ant-modal-header,
+.km-body-dark .ant-popover-inner,
+.km-body-dark .ant-dropdown-menu,
+.km-body-dark .ant-notification-notice,
+.km-body-dark .ant-message-notice-content {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+        #17233d !important;
+    border-color: var(--km-dark-border) !important;
+    color: var(--km-dark-text) !important;
+}
+
+.km-body-dark .ant-modal-body,
+.km-body-dark .ant-modal-footer {
+    color: var(--km-dark-text);
+    border-color: var(--km-dark-border);
+}
+
+.km-body-dark .ant-modal-close,
+.km-body-dark .ant-modal-close-x {
+    color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.km-body-dark .ant-modal-close:hover,
+.km-body-dark .ant-modal-close-x:hover {
+    color: #ffffff !important;
+    background: rgba(89, 126, 247, 0.16) !important;
+}
+
+.km-body-dark .ant-modal-title,
+.km-app-dark .ant-drawer-title,
+.km-body-dark .ant-form-item-label > label,
+.km-body-dark .ant-form-item-required,
+.km-body-dark .ant-popconfirm-title,
+.km-body-dark .ant-popconfirm-description,
+.km-body-dark .ant-dropdown-menu-title-content,
+.km-body-dark .ant-select-item,
+.km-body-dark .ant-picker-content th,
+.km-body-dark .ant-picker-cell {
+    color: var(--km-dark-text) !important;
+}
+
+.km-body-dark .ant-dropdown-menu-item:hover,
+.km-body-dark .ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.km-body-dark .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+    background: rgba(89, 126, 247, 0.18) !important;
+}

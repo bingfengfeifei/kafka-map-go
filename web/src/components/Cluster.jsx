@@ -301,6 +301,8 @@ class Cluster extends Component {
                             }}><FormattedMessage id="edit"/></Button>
                             <Popconfirm
                                 title={<FormattedMessage id="delete-confirm"/>}
+                                okText={<FormattedMessage id="okText"/>}
+                                cancelText={<FormattedMessage id="cancelText"/>}
                                 onConfirm={() => this.delete(record['id'])}
                             >
                                 <Button type="text" size='small' danger><FormattedMessage id="delete"/></Button>

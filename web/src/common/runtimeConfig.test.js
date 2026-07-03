@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import {getInitialLocale, isRuntimeFlagEnabled} from './runtimeConfig.js';
+import {getInitialLocale, getThemeClassName, isRuntimeFlagEnabled} from './runtimeConfig.js';
 
 test('isRuntimeFlagEnabled accepts common true values', () => {
     for (const value of [true, 'true', ' TRUE ', '1', 'yes', 'on']) {
@@ -31,4 +31,12 @@ test('getInitialLocale uses stored locale outside iframe mode', () => {
     });
 
     assert.equal(locale, 'en-us');
+});
+
+test('getThemeClassName includes the dark theme hook when enabled', () => {
+    assert.equal(getThemeClassName(true), 'km-app km-app-dark');
+});
+
+test('getThemeClassName leaves the default theme unmodified', () => {
+    assert.equal(getThemeClassName(false), 'km-app');
 });

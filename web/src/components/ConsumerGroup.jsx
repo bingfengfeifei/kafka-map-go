@@ -157,6 +157,8 @@ class ConsumerGroup extends Component {
                             <div>
                                 <Popconfirm
                                     title={<FormattedMessage id="delete-confirm"/>}
+                                    okText={<FormattedMessage id="okText"/>}
+                                    cancelText={<FormattedMessage id="cancelText"/>}
                                     onConfirm={() => this.delete(record['groupId'], index)}
                                 >
                                     <Button type="text" size='small' danger

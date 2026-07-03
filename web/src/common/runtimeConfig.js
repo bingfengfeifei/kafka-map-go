@@ -33,3 +33,7 @@ export const getInitialLocale = ({iframeMode = false, storedLocale, fallbackLoca
     }
     return storedLocale || fallbackLocale;
 };
+
+export const getThemeClassName = (darkTheme = false) => {
+    return darkTheme ? 'km-app km-app-dark' : 'km-app';
+};
