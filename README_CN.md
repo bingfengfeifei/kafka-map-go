@@ -121,6 +121,7 @@ cache:
 | `KAFKA_MAP_CACHE_TOKEN_EXPIRATION` | 覆盖 `cache.token_expiration`（秒）。 |
 | `KAFKA_MAP_CACHE_MAX_TOKENS` | 覆盖 `cache.max_tokens`。 |
 | `KAFKA_MAP_AUTH_DISABLED` | 完全禁用认证（见下方说明）。接受 `true`/`1`/`yes`/`on`。 |
+| `KAFKA_MAP_IFRAME_MODE` | 启用 iframe 内嵌界面模式。接受 `true`/`1`/`yes`/`on`。 |
 | `DEFAULT_CLUSTER_NAME` / `KAFKA_MAP_BOOTSTRAP_NAME` | 启动时自动创建的集群名称。 |
 | `DEFAULT_CLUSTER_SERVERS` / `KAFKA_MAP_BOOTSTRAP_SERVERS` | 引导集群的逗号分隔的 Broker 列表。 |
 | `DEFAULT_CLUSTER_SECURITY_PROTOCOL` / `KAFKA_MAP_BOOTSTRAP_SECURITY_PROTOCOL` | 可选的安全协议（默认为 `PLAINTEXT`）。 |
@@ -138,6 +139,14 @@ cache:
 
 ```bash
 export KAFKA_MAP_AUTH_DISABLED=true
+```
+
+#### Iframe 内嵌模式
+
+当 Kafka Map Go 通过 iframe 嵌入其他应用时，设置 `KAFKA_MAP_IFRAME_MODE=true`。启用后会隐藏顶部标题栏，并默认使用简体中文。
+
+```bash
+export KAFKA_MAP_IFRAME_MODE=true
 ```
 
 注入默认管理员和引导集群的示例：

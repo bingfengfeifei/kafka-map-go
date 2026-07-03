@@ -92,26 +92,15 @@ func main() {
 	router.Use(middleware.CORSMiddleware())
 
 	router.GET("/runtime-config.js", func(c *gin.Context) {
-		configuredBasePath := firstNonEmpty(
-			os.Getenv("KAFKA_MAP_BASE_PATH"),
-			c.GetHeader("X-Forwarded-Prefix"),
-		)
-		basePath := normalizeRuntimePath(configuredBasePath)
-		apiBase := normalizeRuntimePath(os.Getenv("KAFKA_MAP_API_BASE"))
-		if apiBase == "" && basePath != "" {
-			apiBase = joinRuntimePath(basePath, "api")
-		}
-
-		runtimeConfig := gin.H{}
-		if basePath != "" {
-			runtimeConfig["basePath"] = basePath
-		}
-		if apiBase != "" {
-			runtimeConfig["apiBase"] = apiBase
-		}
-		if config.GlobalConfig.Auth.Disabled {
-			runtimeConfig["authDisabled"] = true
-		}
+		runtimeConfig := buildRuntimeConfig(runtimeConfigOptions{
+			basePath: firstNonEmpty(
+				os.Getenv("KAFKA_MAP_BASE_PATH"),
+				c.GetHeader("X-Forwarded-Prefix"),
+			),
+			apiBase:      os.Getenv("KAFKA_MAP_API_BASE"),
+			authDisabled: config.GlobalConfig.Auth.Disabled,
+			iframeMode:   os.Getenv("KAFKA_MAP_IFRAME_MODE"),
+		})
 
 		payload, err := json.Marshal(runtimeConfig)
 		if err != nil {
@@ -305,6 +294,46 @@ func firstNonEmpty(values ...string) string {
 		}
 	}
 	return ""
+}
+
+type runtimeConfigOptions struct {
+	basePath     string
+	apiBase      string
+	authDisabled bool
+	iframeMode   string
+}
+
+func buildRuntimeConfig(options runtimeConfigOptions) gin.H {
+	basePath := normalizeRuntimePath(options.basePath)
+	apiBase := normalizeRuntimePath(options.apiBase)
+	if apiBase == "" && basePath != "" {
+		apiBase = joinRuntimePath(basePath, "api")
+	}
+
+	runtimeConfig := gin.H{}
+	if basePath != "" {
+		runtimeConfig["basePath"] = basePath
+	}
+	if apiBase != "" {
+		runtimeConfig["apiBase"] = apiBase
+	}
+	if options.authDisabled {
+		runtimeConfig["authDisabled"] = true
+	}
+	if parseRuntimeBool(options.iframeMode) {
+		runtimeConfig["iframeMode"] = true
+	}
+
+	return runtimeConfig
+}
+
+func parseRuntimeBool(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "1", "true", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }
 
 func normalizeRuntimeBasePath(basePath string) string {

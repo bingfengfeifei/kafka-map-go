@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import './App.css';
 import 'antd/dist/reset.css';
-import {ConfigProvider, Dropdown, Layout, Menu} from 'antd';
+import {ConfigProvider, Dropdown, Layout} from 'antd';
 import {Link, Outlet} from 'react-router-dom';
 import {NT_PACKAGE} from "./utils/utils.jsx";
 import zhCN from 'antd/locale/zh_CN';
@@ -13,7 +13,8 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import 'dayjs/locale/zh-cn';
 import {FormattedMessage, IntlProvider} from 'react-intl';
 import request from "./common/request";
-import {authDisabled} from "./common/env";
+import {authDisabled, iframeMode} from "./common/env";
+import {getInitialLocale} from "./common/runtimeConfig";
 
 const {Header, Content} = Layout;
 
@@ -23,17 +24,20 @@ class App extends Component {
 
     state = {
         package: NT_PACKAGE(),
-        locale: 'en-us',
+        locale: getInitialLocale({
+            iframeMode,
+            storedLocale: typeof window === 'undefined' ? null : localStorage.getItem('locale'),
+        }),
         info: {
             username: ''
         }
     }
 
     componentDidMount() {
-        let locale = localStorage.getItem('locale');
-        if (!locale) {
-            locale = 'en-us';
-        }
+        let locale = getInitialLocale({
+            iframeMode,
+            storedLocale: localStorage.getItem('locale'),
+        });
         dayjs.locale(locale);
         this.setState({
             locale: locale
@@ -118,24 +122,25 @@ class App extends Component {
             <IntlProvider locale={this.state.locale} messages={messages[this.state.locale]}>
                 <ConfigProvider locale={this.getAntDesignLocale(this.state.locale)}>
                     <Layout style={{minHeight: '100vh'}}>
-                        <Header className="header">
-                            <div className='km-header'>
-                                <div style={{flex: '1 1 0%'}}>
-                                    <Link to={'/'}>
-                                        <span className='km-header-logo'>Kafka Map Go</span>
-                                    </Link>
-                                </div>
-                                {!authDisabled && (
-                                <div className='km-header-right'>
-                                    <Dropdown menu={{items: infoItems}}>
+                        {!iframeMode && (
+                            <Header className="header">
+                                <div className='km-header'>
+                                    <div style={{flex: '1 1 0%'}}>
+                                        <Link to={'/'}>
+                                            <span className='km-header-logo'>Kafka Map Go</span>
+                                        </Link>
+                                    </div>
+                                    {!authDisabled && (
+                                        <div className='km-header-right'>
+                                            <Dropdown menu={{items: infoItems}}>
                                                 <span className={'km-header-right-item'}>
                                                     {this.state.info.username}
                                                 </span>
-                                    </Dropdown>
-                                </div>
-                                )}
-                                <div className='km-header-right'>
-                                    <Dropdown menu={{items: langItems}}>
+                                            </Dropdown>
+                                        </div>
+                                    )}
+                                    <div className='km-header-right'>
+                                        <Dropdown menu={{items: langItems}}>
                                                 <span className={'km-header-right-item'}>
                                                     <i className="anticon">
                                                         <svg viewBox="0 0 24 24" focusable="false" width="1em"
@@ -148,10 +153,11 @@ class App extends Component {
                                                         </svg>
                                                     </i>
                                                 </span>
-                                    </Dropdown>
+                                        </Dropdown>
+                                    </div>
                                 </div>
-                            </div>
-                        </Header>
+                            </Header>
+                        )}
                         <Content className='km-container'>
                             <Layout>
                                 <Content>

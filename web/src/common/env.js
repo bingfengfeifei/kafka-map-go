@@ -1,3 +1,5 @@
+import {getRuntimeConfig, isRuntimeFlagEnabled} from "./runtimeConfig";
+
 const joinPath = (...parts) => {
     const filtered = parts.filter(part => part !== undefined && part !== null && part !== '');
     if (filtered.length === 0) {
@@ -16,7 +18,7 @@ const normalizeBasePath = (basePath) => {
     return prefixed.endsWith('/') ? prefixed : `${prefixed}/`;
 };
 
-const runtimeConfig = () => window.__KAFKA_MAP_CONFIG__ || {};
+const runtimeConfig = () => getRuntimeConfig();
 
 const currentBasePath = () => {
     const configBase = runtimeConfig().basePath;
@@ -66,3 +68,5 @@ export const prefix = env().prefix;
 export const appBasePath = currentBasePath();
 
 export const authDisabled = !!runtimeConfig().authDisabled;
+
+export const iframeMode = isRuntimeFlagEnabled(runtimeConfig().iframeMode);
