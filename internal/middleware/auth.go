@@ -9,8 +9,15 @@ import (
 )
 
 // AuthMiddleware validates authentication token
-func AuthMiddleware(tokenCache *util.TokenCache) gin.HandlerFunc {
+func AuthMiddleware(tokenCache *util.TokenCache, authDisabled bool) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
+		// Authentication disabled (e.g. behind a reverse proxy / private network)
+		if authDisabled {
+			ctx.Set("username", "anonymous")
+			ctx.Next()
+			return
+		}
+
 		// Skip authentication for login endpoint
 		if ctx.Request.URL.Path == "/api/login" {
 			ctx.Next()

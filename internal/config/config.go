@@ -14,6 +14,7 @@ type Config struct {
 	Database          DatabaseConfig           `yaml:"database"`
 	Default           DefaultConfig            `yaml:"default"`
 	Cache             CacheConfig              `yaml:"cache"`
+	Auth              AuthConfig               `yaml:"auth"`
 	BootstrapClusters []BootstrapClusterConfig `yaml:"bootstrap_clusters"`
 }
 
@@ -33,6 +34,10 @@ type DefaultConfig struct {
 type CacheConfig struct {
 	TokenExpiration int `yaml:"token_expiration"`
 	MaxTokens       int `yaml:"max_tokens"`
+}
+
+type AuthConfig struct {
+	Disabled bool `yaml:"disabled"`
 }
 
 type BootstrapClusterConfig struct {
@@ -104,6 +109,10 @@ func applyEnvOverrides(cfg *Config) error {
 		cfg.Cache.MaxTokens = maxTokens
 	}
 
+	if parseBoolEnv(os.Getenv("KAFKA_MAP_AUTH_DISABLED")) {
+		cfg.Auth.Disabled = true
+	}
+
 	bootstrap := BootstrapClusterConfig{
 		Name:             firstEnv("DEFAULT_CLUSTER_NAME", "KAFKA_MAP_BOOTSTRAP_NAME"),
 		Servers:          firstEnv("DEFAULT_CLUSTER_SERVERS", "KAFKA_MAP_BOOTSTRAP_SERVERS"),
@@ -128,4 +137,14 @@ func firstEnv(keys ...string) string {
 		}
 	}
 	return ""
+}
+
+// parseBoolEnv treats true/1/yes/on (case-insensitive) as enabled.
+func parseBoolEnv(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "true", "1", "yes", "on":
+		return true
+	default:
+		return false
+	}
 }

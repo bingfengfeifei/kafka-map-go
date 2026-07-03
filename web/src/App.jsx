@@ -1,7 +1,7 @@
 import React, {Component} from 'react';
 import './App.css';
 import 'antd/dist/reset.css';
-import {Button, ConfigProvider, Dropdown, Layout, Menu, Tooltip} from 'antd';
+import {ConfigProvider, Dropdown, Layout, Menu} from 'antd';
 import {Link, Outlet} from 'react-router-dom';
 import {NT_PACKAGE} from "./utils/utils.jsx";
 import zhCN from 'antd/locale/zh_CN';
@@ -13,11 +13,9 @@ import relativeTime from "dayjs/plugin/relativeTime";
 import 'dayjs/locale/zh-cn';
 import {FormattedMessage, IntlProvider} from 'react-intl';
 import request from "./common/request";
-import {
-    GithubOutlined
-} from '@ant-design/icons';
+import {authDisabled} from "./common/env";
 
-const {Header, Content, Footer} = Layout;
+const {Header, Content} = Layout;
 
 dayjs.extend(relativeTime);
 
@@ -40,7 +38,9 @@ class App extends Component {
         this.setState({
             locale: locale
         })
-        this.loadUserInfo();
+        if (!authDisabled) {
+            this.loadUserInfo();
+        }
     }
 
     setLocale = (locale) => {
@@ -125,6 +125,7 @@ class App extends Component {
                                         <span className='km-header-logo'>Kafka Map Go</span>
                                     </Link>
                                 </div>
+                                {!authDisabled && (
                                 <div className='km-header-right'>
                                     <Dropdown menu={{items: infoItems}}>
                                                 <span className={'km-header-right-item'}>
@@ -132,6 +133,7 @@ class App extends Component {
                                                 </span>
                                     </Dropdown>
                                 </div>
+                                )}
                                 <div className='km-header-right'>
                                     <Dropdown menu={{items: langItems}}>
                                                 <span className={'km-header-right-item'}>
@@ -148,18 +150,6 @@ class App extends Component {
                                                 </span>
                                     </Dropdown>
                                 </div>
-
-                                <div className='km-header-right'>
-                                                <span className={'km-header-right-item'}>
-                                                    <Tooltip title="GitHub">
-                                                        <Button type="text" style={{color: 'white'}}
-                                                                href='https://github.com/bingfengfeifei/kafka-map-go'
-                                                                icon={<GithubOutlined/>}>
-
-                                                        </Button>
-                                                      </Tooltip>
-                                                </span>
-                                </div>
                             </div>
                         </Header>
                         <Content className='km-container'>
@@ -169,10 +159,6 @@ class App extends Component {
                                 </Content>
                             </Layout>
                         </Content>
-                        <Footer style={{textAlign: 'center'}}>
-                            Kafka Map Go ©2025 Created by bingfengfeifei &nbsp;
-                            Version: v{this.state.package['version'] || '1.0.0'}
-                        </Footer>
                     </Layout>
                 </ConfigProvider>
             </IntlProvider>

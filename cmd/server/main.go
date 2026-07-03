@@ -109,6 +109,9 @@ func main() {
 		if apiBase != "" {
 			runtimeConfig["apiBase"] = apiBase
 		}
+		if config.GlobalConfig.Auth.Disabled {
+			runtimeConfig["authDisabled"] = true
+		}
 
 		payload, err := json.Marshal(runtimeConfig)
 		if err != nil {
@@ -128,7 +131,7 @@ func main() {
 
 		// Protected routes (authentication required)
 		protected := api.Group("")
-		protected.Use(middleware.AuthMiddleware(tokenCache))
+		protected.Use(middleware.AuthMiddleware(tokenCache, config.GlobalConfig.Auth.Disabled))
 		{
 			// Account routes
 			protected.POST("/logout", accountController.Logout)
@@ -182,7 +185,7 @@ func main() {
 
 		// Protected routes (authentication required)
 		protected := apiDirect.Group("")
-		protected.Use(middleware.AuthMiddleware(tokenCache))
+		protected.Use(middleware.AuthMiddleware(tokenCache, config.GlobalConfig.Auth.Disabled))
 		{
 			// Account routes
 			protected.POST("/logout", accountController.Logout)

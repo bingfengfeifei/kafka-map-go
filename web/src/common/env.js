@@ -64,3 +64,5 @@ export const wsServer = env().wsServer;
 export const prefix = env().prefix;
 
 export const appBasePath = currentBasePath();
+
+export const authDisabled = !!runtimeConfig().authDisabled;

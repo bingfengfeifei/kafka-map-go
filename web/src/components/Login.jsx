@@ -2,7 +2,7 @@ import React, {Component} from 'react';
 import {Button, Card, Form, Input, Typography} from "antd";
 import './Login.css'
 import request from "../common/request";
-import {appBasePath} from "../common/env";
+import {appBasePath, authDisabled} from "../common/env";
 import {LockOutlined, UserOutlined} from '@ant-design/icons';
 
 const {Title} = Typography;
@@ -16,6 +16,10 @@ class Login extends Component {
     };
 
     componentDidMount() {
+        if (authDisabled) {
+            window.location.href = appBasePath;
+            return;
+        }
         window.addEventListener('resize', () => {
             this.setState({
                 height: window.innerHeight,

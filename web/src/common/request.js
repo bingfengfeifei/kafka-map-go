@@ -2,6 +2,7 @@ import axios from 'axios'
 import {server} from "./env";
 import {message} from 'antd';
 import {getHeaders} from "../utils/utils.jsx";
+import {authDisabled} from "./env";
 
 // 测试地址
 // axios.defaults.baseURL = server;
@@ -24,7 +25,9 @@ const handleError = (error) => {
         }
 
         if (status === 401) {
-            window.location.href = '#/login';
+            if (!authDisabled) {
+                window.location.href = '#/login';
+            }
             return false;
         }
 
@@ -36,7 +39,9 @@ const handleError = (error) => {
 
 const handleResult = (result) => {
     if (result['code'] === 401) {
-        window.location.href = '#/login';
+        if (!authDisabled) {
+            window.location.href = '#/login';
+        }
         return false;
     }
     return true;

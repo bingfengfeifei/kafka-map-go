@@ -120,6 +120,7 @@ cache:
 | `DEFAULT_PASSWORD` / `KAFKA_MAP_DEFAULT_PASSWORD` | 覆盖初始管理员密码。 |
 | `KAFKA_MAP_CACHE_TOKEN_EXPIRATION` | 覆盖 `cache.token_expiration`（秒）。 |
 | `KAFKA_MAP_CACHE_MAX_TOKENS` | 覆盖 `cache.max_tokens`。 |
+| `KAFKA_MAP_AUTH_DISABLED` | 完全禁用认证（见下方说明）。接受 `true`/`1`/`yes`/`on`。 |
 | `DEFAULT_CLUSTER_NAME` / `KAFKA_MAP_BOOTSTRAP_NAME` | 启动时自动创建的集群名称。 |
 | `DEFAULT_CLUSTER_SERVERS` / `KAFKA_MAP_BOOTSTRAP_SERVERS` | 引导集群的逗号分隔的 Broker 列表。 |
 | `DEFAULT_CLUSTER_SECURITY_PROTOCOL` / `KAFKA_MAP_BOOTSTRAP_SECURITY_PROTOCOL` | 可选的安全协议（默认为 `PLAINTEXT`）。 |
@@ -128,6 +129,16 @@ cache:
 | `DEFAULT_CLUSTER_SASL_PASSWORD` / `KAFKA_MAP_BOOTSTRAP_SASL_PASSWORD` | SASL 密码（如果需要）。 |
 | `DEFAULT_CLUSTER_AUTH_USERNAME` / `KAFKA_MAP_BOOTSTRAP_AUTH_USERNAME` | SASL 用户名的别名。 |
 | `DEFAULT_CLUSTER_AUTH_PASSWORD` / `KAFKA_MAP_BOOTSTRAP_AUTH_PASSWORD` | SASL 密码的别名。 |
+
+#### 禁用认证
+
+设置 `KAFKA_MAP_AUTH_DISABLED=true`（也接受 `1`/`yes`/`on`）可完全跳过登录。启用后，API 不再需要 token，登录页面将被跳过，用户菜单（退出登录 / 修改密码）会在界面中隐藏。这适用于私有网络，或由带认证的反向代理保护的对内部署。
+
+> ⚠️ **安全警告：** 任何能访问该端口的人都可以完全操作每一个集群（创建/删除 topic、读取并发送消息等）。请仅在受信任的隔离环境中启用。
+
+```bash
+export KAFKA_MAP_AUTH_DISABLED=true
+```
 
 注入默认管理员和引导集群的示例：
 
